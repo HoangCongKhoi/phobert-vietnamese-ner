@@ -8,6 +8,9 @@ import pandas as pd
 import seaborn as sns
 import torch
 import torch.nn as nn
+from datasets import Dataset, concatenate_datasets
+from peft import LoraConfig, get_peft_model
+from sklearn.metrics import confusion_matrix
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -19,9 +22,7 @@ from transformers import (
     get_linear_schedule_with_warmup,
 )
 
-# Thư viện PEFT hỗ trợ LoRA
-from peft import LoraConfig, get_peft_model
-
+from augment import augment_entity_swap
 from dataloader import load_phoner_dataset
 from seqeval.metrics import (
     classification_report,
@@ -59,29 +60,18 @@ writer = SummaryWriter(LOGGING_DIR)
 
 
 def plot_confusion_matrix(writer, cm, class_names, epoch=0):
-  """Returns a matplotlib figure containing the plotted confusion matrix.
-
-  Args:
-     writer: SummaryWriter instance của TensorBoard
-     cm (array, shape = [n, n]): a confusion matrix of integer classes
-     class_names (array, shape = [n]): String names of the integer classes
-     epoch (int): Epoch hiện tại để log vào TensorBoard
-  """
   figure = plt.figure(figsize=(16, 16))
-  # color map: https://matplotlib.org/stable/gallery/color/colormap_reference.html
   plt.imshow(cm, interpolation="nearest", cmap="ocean")
-  plt.title("Confusion matrix", fontsize=16, fontweight="bold")
+  plt.title("Confusion Matrix (PhoBERT + LoRA + CRF)", fontsize=16, fontweight="bold")
   plt.colorbar()
   tick_marks = np.arange(len(class_names))
   plt.xticks(tick_marks, class_names, rotation=45, ha="right")
   plt.yticks(tick_marks, class_names)
 
-  # Normalize the confusion matrix.
   cm_norm = np.around(
       cm.astype("float") / (cm.sum(axis=1)[:, np.newaxis] + 1e-9), decimals=2
   )
 
-  # Use white text if squares are dark; otherwise black.
   threshold = cm_norm.max() / 2.0
 
   for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
@@ -104,12 +94,21 @@ def plot_confusion_matrix(writer, cm, class_names, epoch=0):
 
   save_path = "confusion_matrix.png"
   plt.savefig(save_path, dpi=300)
+  print(f"\n✅ Đã lưu Confusion Matrix vào: {save_path}")
+  plt.show()  # Bật hiển thị ảnh trực tiếp ra màn hình
   plt.close(figure)
 
+
 # ==========================================
-# 2. DATA LOADING & ENCODING
+# 2. DATA LOADING & AUGMENTATION
 # ==========================================
 train_dataset, dev_dataset, test_dataset = load_phoner_dataset(DATA_DIR)
+#DATA AUGMENTATION
+aug_tokens, aug_tags = augment_entity_swap(
+    train_dataset, target_label="JOB", num_augments_per_sentence=3
+)
+aug_dataset = Dataset.from_dict({"tokens": aug_tokens, "ner_tags": aug_tags})
+train_dataset = concatenate_datasets([train_dataset, aug_dataset])
 
 unique_labels = set(tag for tags in train_dataset["ner_tags"] for tag in tags)
 label_list = sorted(list(unique_labels))
@@ -198,18 +197,13 @@ class PhoBertLoRACRF(nn.Module):
     peft_config = LoraConfig(
         r=16,
         lora_alpha=32,
-        target_modules=[
-            "query",
-            "value",
-        ],
-        lora_dropout=0.1,
+        target_modules=["query", "key", "value", "dense"],
         bias="none",
     )
 
-    # Wrap PhoBERT bằng LoRA
     self.phobert = get_peft_model(base_phobert, peft_config)
     print("\nTHÔNG SỐ BỘ LORA THAM SỐ:")
-    self.phobert.print_trainable_parameters()  # In số lượng tham số thực sự cần train
+    self.phobert.print_trainable_parameters()
 
     hidden_size = base_phobert.config.hidden_size
     self.dropout = nn.Dropout(0.1)
@@ -243,9 +237,22 @@ model = PhoBertLoRACRF(
     MODEL_NAME, num_labels=len(label_list), pad_label_id=o_label_id
 ).to(device)
 
-EPOCHS = 5
-# Với LoRA, Learning Rate thường đặt cao hơn 1 chút (1e-3 đến 3e-4) để học nhanh hơn
-optimizer = AdamW(model.parameters(), lr=5e-4, weight_decay=0.01)
+EPOCHS = 10
+
+optimizer_grouped_parameters = [
+    {
+        "params": [
+            p for n, p in model.phobert.named_parameters() if p.requires_grad
+        ],
+        "lr": 3e-4,
+        "weight_decay": 0.01,
+    },
+    {"params": model.classifier.parameters(), "lr": 1e-3, "weight_decay": 0.01},
+    {"params": model.crf.parameters(), "lr": 2e-3, "weight_decay": 0.0},
+]
+
+optimizer = AdamW(optimizer_grouped_parameters)
+
 num_iters = len(train_loader)
 total_steps = num_iters * EPOCHS
 
@@ -360,7 +367,6 @@ for epoch in range(EPOCHS):
   if val_f1 > best_f1:
     best_f1 = val_f1
     torch.save(checkpoint, os.path.join(CHECKPOINT_DIR, "best_phobert_lora.pt"))
-    # Lưu adapter LoRA siêu nhẹ
     model.phobert.save_pretrained(BEST_LORA_DIR)
     tokenizer.save_pretrained(BEST_LORA_DIR)
   print("-" * 60)
@@ -368,9 +374,10 @@ for epoch in range(EPOCHS):
 # ==========================================
 # 5. TEST EVALUATION & VISUALIZATION
 # ==========================================
-print("\nEVALUATION RESULTS (PHOBERT + LORA + CRF)...")
+print("\nEVALUATION RESULTS")
 model.eval()
 test_preds, test_labels = [], []
+y_true_flat, y_pred_flat = [], []
 
 with torch.no_grad():
   for batch in tqdm(test_loader, desc="Testing", colour="blue"):
@@ -386,15 +393,23 @@ with torch.no_grad():
       valid_preds = []
       for j, l in enumerate(label_seq):
         if l != -100:
-          valid_labels.append(id2label[l])
-          valid_preds.append(id2label[preds[i][j]])
+          true_lbl = id2label[l]
+          pred_lbl = id2label[preds[i][j]]
+          valid_labels.append(true_lbl)
+          valid_preds.append(pred_lbl)
+          y_true_flat.append(true_lbl)
+          y_pred_flat.append(pred_lbl)
       test_preds.append(valid_preds)
       test_labels.append(valid_labels)
 
+#BSEQEVAL
 report = classification_report(test_labels, test_preds)
 print("\n--- REPORT (TEST SET - PHOBERT + LORA + CRF) ---")
 print(report)
-
+#CONFUSION MATRIX
+cm = confusion_matrix(y_true_flat, y_pred_flat, labels=label_list)
+plot_confusion_matrix(writer, cm, class_names=label_list, epoch=EPOCHS)
+# ARPLOT F1-SCORE
 lines = report.strip().split("\n")
 entities, f1_scores = [], []
 
