@@ -1,0 +1,25 @@
+# IDE / Editor
+.idea/
+.vscode/
+
+# Python Cache
+__pycache__/
+*/__pycache__/
+*.pyc
+
+# Tensorboard & Logs
+runs/
+*/runs/
+*.tfevents.*
+
+# Dataset & Model Weights
+PhoNER_COVID19-main/
+trained_models/
+best_phobert_model/
+*.pt
+*.bin
+*.safetensors
+
+# Virtual Environment
+.venv/
+venv/
