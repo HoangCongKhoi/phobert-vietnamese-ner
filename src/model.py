@@ -94,8 +94,7 @@ def plot_confusion_matrix(writer, cm, class_names, epoch=0):
 
   save_path = "confusion_matrix.png"
   plt.savefig(save_path, dpi=300)
-  print(f"\n✅ Đã lưu Confusion Matrix vào: {save_path}")
-  plt.show()  # Bật hiển thị ảnh trực tiếp ra màn hình
+  plt.show()
   plt.close(figure)
 
 
@@ -375,6 +374,10 @@ for epoch in range(EPOCHS):
 # 5. TEST EVALUATION & VISUALIZATION
 # ==========================================
 print("\nEVALUATION RESULTS")
+best_ckpt_path = os.path.join(CHECKPOINT_DIR, "best_phobert_lora.pt")
+if os.path.exists(best_ckpt_path):
+  checkpoint = torch.load(best_ckpt_path, map_location=device)
+  model.load_state_dict(checkpoint["model"])
 model.eval()
 test_preds, test_labels = [], []
 y_true_flat, y_pred_flat = [], []
