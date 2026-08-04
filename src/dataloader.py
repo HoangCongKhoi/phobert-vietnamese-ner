@@ -30,9 +30,7 @@ def read_phoner_file(file_path):
 
 def load_phoner_dataset(data_dir):
     #Load toàn bộ
-
     train_ds = read_phoner_file(os.path.join(data_dir, "train_word.conll"))
     dev_ds = read_phoner_file(os.path.join(data_dir, "dev_word.conll"))
     test_ds = read_phoner_file(os.path.join(data_dir, "test_word.conll"))
-
     return train_ds, dev_ds, test_ds
