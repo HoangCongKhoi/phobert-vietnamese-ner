@@ -128,6 +128,8 @@ model = AutoModelForTokenClassification.from_pretrained(
 model.to(device)
 
 EPOCHS = 5
+best_f1 = 0.0
+SAVE_PATH = os.path.join(OUTPUT_DIR, "best_phobert_model")
 optimizer = AdamW(model.parameters(), lr=3e-5, weight_decay=0.01)
 total_steps = len(train_loader) * EPOCHS
 scheduler = get_linear_schedule_with_warmup(
@@ -213,6 +215,13 @@ for epoch in range(EPOCHS):
       f"Val Recall: {val_recall:.4f} | "
       f"Val F1: {val_f1:.4f}\n"
   )
+  if val_f1 > best_f1:
+      best_f1 = val_f1
+      print(f"F1 cải thiện lên {best_f1:.4f}! Đang lưu model tốt nhất vào: {SAVE_PATH}...")
+
+      # Lưu cả Weights mô hình lẫn Tokenizer
+      model.save_pretrained(SAVE_PATH)
+      tokenizer.save_pretrained(SAVE_PATH)
 
 # ==========================================
 # 4. EVALUATE ON TEST SET & VISUALIZE
@@ -263,3 +272,4 @@ plt.xlim(0, 1.0)
 plt.tight_layout()
 plt.savefig("phoner_covid19_f1_scores.png", dpi=300)
 plt.show()
+#Save load
