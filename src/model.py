@@ -1,4 +1,5 @@
 import os
+import glob
 import shutil
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,11 +28,20 @@ from seqeval.metrics import (
 MODEL_NAME = "vinai/phobert-base-v2"
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "PhoNER_COVID19-main", "data", "word")
+KAGGLE_INPUT_DIR = "/kaggle/input"
 
 LOGGING_DIR = "./runs/phobert_ner"
 CHECKPOINT_DIR = "./trained_models"
 BEST_HF_MODEL_DIR = os.path.join(CHECKPOINT_DIR, "best_phobert_model")
 
+if os.path.exists(KAGGLE_INPUT_DIR):
+    found_files = glob.glob(
+        f"{KAGGLE_INPUT_DIR}/**/train_word.conll", recursive=True
+    )
+    if found_files:
+        DATA_DIR = os.path.dirname(found_files[0])
+    else:
+        DATA_DIR = os.path.join(BASE_DIR, "PhoNER_COVID19-main", "data", "word")
 if os.path.isdir(LOGGING_DIR):
   shutil.rmtree(LOGGING_DIR)
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
