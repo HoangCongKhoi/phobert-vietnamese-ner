@@ -5,3 +5,11 @@ seqeval>=1.2.2
 pytorch-crf>=0.7.2
 scikit-learn
 accelerate
+pandas
+matplotlib
+seaborn
+tqdm
+numpy
+peft
+tensorboard
+torchvision
