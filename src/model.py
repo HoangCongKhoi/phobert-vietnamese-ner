@@ -234,7 +234,7 @@ model = PhoBertLoRACRF(
     MODEL_NAME, num_labels=len(label_list), pad_label_id=o_label_id
 ).to(device)
 
-EPOCHS = 1
+EPOCHS = 10
 
 optimizer_grouped_parameters = [
     {
