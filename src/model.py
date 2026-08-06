@@ -60,43 +60,41 @@ writer = SummaryWriter(LOGGING_DIR)
 
 
 def plot_confusion_matrix(writer, cm, class_names, epoch=0):
-  figure = plt.figure(figsize=(16, 16))
-  plt.imshow(cm, interpolation="nearest", cmap="ocean")
-  plt.title("Confusion Matrix (PhoBERT + LoRA + CRF)", fontsize=16, fontweight="bold")
-  plt.colorbar()
-  tick_marks = np.arange(len(class_names))
-  plt.xticks(tick_marks, class_names, rotation=45, ha="right")
-  plt.yticks(tick_marks, class_names)
+  cm_norm = cm.astype("float") / (cm.sum(axis=1)[:, np.newaxis] + 1e-9)
 
-  cm_norm = np.around(
-      cm.astype("float") / (cm.sum(axis=1)[:, np.newaxis] + 1e-9), decimals=2
+  figure, ax = plt.subplots(figsize=(14, 12))
+
+  sns.heatmap(
+      cm_norm,
+      annot=True,
+      fmt=".2f",
+      cmap="Blues",
+      linewidths=0.5,
+      linecolor="lightgray",
+      xticklabels=class_names,
+      yticklabels=class_names,
+      cbar=True,
+      ax=ax,
   )
 
-  threshold = cm_norm.max() / 2.0
-
-  for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-    color = "white" if cm_norm[i, j] > threshold else "black"
-    plt.text(
-        j,
-        i,
-        f"{cm_norm[i, j]:.2f}",
-        horizontalalignment="center",
-        verticalalignment="center",
-        color=color,
-        fontsize=9,
-    )
-
-  plt.tight_layout()
+  plt.title(
+      "Confusion Matrix (PhoBERT + LoRA + CRF)",
+      fontsize=14,
+      fontweight="bold",
+      pad=15,
+  )
   plt.ylabel("True label", fontsize=12)
   plt.xlabel("Predicted label", fontsize=12)
+  plt.xticks(rotation=45, ha="right")
+  plt.yticks(rotation=0)
+  plt.tight_layout()
 
   writer.add_figure("Confusion_Matrix", figure, global_step=epoch)
 
   save_path = "confusion_matrix.png"
-  plt.savefig(save_path, dpi=300)
-  plt.show()
+  plt.savefig(save_path, dpi=300, bbox_inches="tight")
+  print(f"\nĐã lưu Confusion Matrix vào: {save_path}")
   plt.close(figure)
-
 
 # ==========================================
 # 2. DATA LOADING & AUGMENTATION
