@@ -8,35 +8,83 @@ export default function EntityLegend({ metadata, activeFilters, onToggleFilter, 
     const activeCount = labels.filter((l) => activeFilters[l] !== false).length;
 
     return (
-        <div className="glass-panel p-5 mb-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-700/60">
-                <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-indigo-400" />
-                    <h3 className="text-sm font-semibold text-slate-200">
-                        Danh mục Thực thể ({activeCount}/{labels.length})
-                    </h3>
-                    <span className="text-xs text-slate-400 ml-2 hidden sm:inline">
-                        (Click để ẩn/hiện loại thực thể trong đoạn văn)
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Header row */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                    <Filter style={{ width: 13, height: 13, color: 'var(--muted)' }} />
+                    <span style={{
+                        fontFamily: 'var(--font-sans)',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        letterSpacing: '0.07em',
+                        textTransform: 'uppercase',
+                        color: 'var(--muted)',
+                    }}>
+                        Lọc thực thể
+                    </span>
+                    <span style={{
+                        fontSize: '11px',
+                        fontFamily: 'var(--font-mono)',
+                        color: 'var(--muted-soft)',
+                        background: 'var(--surface-soft)',
+                        borderRadius: '9999px',
+                        padding: '1px 8px',
+                        border: '1px solid var(--hairline)',
+                    }}>
+                        {activeCount}/{labels.length}
                     </span>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <button
                         onClick={onSelectAll}
-                        className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                        style={{
+                            background: 'none',
+                            border: '1px solid var(--hairline)',
+                            borderRadius: '6px',
+                            padding: '4px 10px',
+                            fontFamily: 'var(--font-sans)',
+                            fontSize: '11px',
+                            fontWeight: 500,
+                            color: 'var(--muted)',
+                            cursor: 'pointer',
+                            transition: 'background 0.12s, color 0.12s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-soft)'; e.currentTarget.style.color = 'var(--ink)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--muted)'; }}
                     >
                         Hiện tất cả
                     </button>
                     <button
                         onClick={onDeselectAll}
-                        className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors"
+                        style={{
+                            background: 'none',
+                            border: '1px solid var(--hairline)',
+                            borderRadius: '6px',
+                            padding: '4px 10px',
+                            fontFamily: 'var(--font-sans)',
+                            fontSize: '11px',
+                            fontWeight: 500,
+                            color: 'var(--muted)',
+                            cursor: 'pointer',
+                            transition: 'background 0.12s, color 0.12s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-soft)'; e.currentTarget.style.color = 'var(--ink)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--muted)'; }}
                     >
                         Ẩn tất cả
                     </button>
                 </div>
             </div>
 
-            <div className="flex flex-wrap gap-2.5">
+            {/* Entity chips */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {labels.map((labelKey) => {
                     const item = metadata[labelKey];
                     const isActive = activeFilters[labelKey] !== false;
@@ -45,19 +93,27 @@ export default function EntityLegend({ metadata, activeFilters, onToggleFilter, 
                         <button
                             key={labelKey}
                             onClick={() => onToggleFilter(labelKey)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer select-none ${isActive
-                                ? 'opacity-100 scale-100 shadow-sm'
-                                : 'opacity-40 grayscale hover:grayscale-0 scale-95 border-slate-700 bg-slate-900/50 text-slate-500'
-                                }`}
+                            className={`entity-chip ${!isActive ? 'inactive' : ''}`}
                             style={{
                                 backgroundColor: isActive ? item.bg : undefined,
                                 color: isActive ? item.color : undefined,
                                 borderColor: isActive ? item.border : undefined,
                             }}
                         >
-                            {isActive ? <Check className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                            {isActive
+                                ? <Check style={{ width: 11, height: 11 }} />
+                                : <EyeOff style={{ width: 11, height: 11 }} />
+                            }
                             <span>{item.name}</span>
-                            <span className="text-[10px] uppercase font-bold opacity-80 bg-black/10 px-1 rounded">
+                            <span style={{
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                letterSpacing: '0.06em',
+                                textTransform: 'uppercase',
+                                opacity: 0.7,
+                                fontFamily: 'var(--font-mono)',
+                                marginLeft: '2px',
+                            }}>
                                 {labelKey}
                             </span>
                         </button>

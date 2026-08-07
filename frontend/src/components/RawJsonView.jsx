@@ -3,7 +3,7 @@ import { Code, Table, Copy, Check } from 'lucide-react';
 
 export default function RawJsonView({ result }) {
     const [copied, setCopied] = useState(false);
-    const [activeTab, setActiveTab] = useState('table'); // 'table' or 'json'
+    const [activeTab, setActiveTab] = useState('table');
 
     if (!result || !result.entities) return null;
 
@@ -14,102 +14,199 @@ export default function RawJsonView({ result }) {
     };
 
     return (
-        <div className="glass-panel p-6 mb-8">
-            {/* Header Tabs */}
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-700/60">
-                <div className="flex items-center gap-2">
+        <div className="animate-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* Tab bar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                <div className="tab-bar" style={{ flex: 1 }}>
                     <button
                         onClick={() => setActiveTab('table')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'table'
-                                ? 'bg-indigo-600 text-white shadow-md'
-                                : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-                            }`}
+                        className={`tab-item ${activeTab === 'table' ? 'active' : ''}`}
+                        id="tab-entity-table"
                     >
-                        <Table className="w-3.5 h-3.5" />
-                        <span>Bảng thống kê Thực thể ({result.entities.length})</span>
+                        <Table style={{ width: 13, height: 13 }} />
+                        <span>Bảng thực thể ({result.entities.length})</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('json')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'json'
-                                ? 'bg-indigo-600 text-white shadow-md'
-                                : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-                            }`}
+                        className={`tab-item ${activeTab === 'json' ? 'active' : ''}`}
+                        id="tab-json-payload"
                     >
-                        <Code className="w-3.5 h-3.5" />
-                        <span>JSON API Payload</span>
+                        <Code style={{ width: 13, height: 13 }} />
+                        <span>JSON Payload</span>
                     </button>
                 </div>
 
                 {activeTab === 'json' && (
                     <button
                         onClick={handleCopy}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+                        className="btn-secondary"
+                        style={{ height: '34px', padding: '0 14px', fontSize: '12px', gap: '5px' }}
                     >
-                        {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copied ? 'Đã sao chép!' : 'Copy JSON'}</span>
+                        {copied
+                            ? <Check style={{ width: 13, height: 13, color: 'var(--success)' }} />
+                            : <Copy style={{ width: 13, height: 13 }} />
+                        }
+                        {copied ? 'Đã sao chép' : 'Copy JSON'}
                     </button>
                 )}
             </div>
 
-            {/* Tab 1: Entity Breakdown Table */}
+            {/* Entity Table */}
             {activeTab === 'table' && (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs text-slate-300 border-collapse">
-                        <thead>
-                            <tr className="border-b border-slate-700 bg-slate-900/60 text-slate-400 font-semibold uppercase tracking-wider">
-                                <th className="py-2.5 px-4">#</th>
-                                <th className="py-2.5 px-4">Từ / Cụm từ thực thể</th>
-                                <th className="py-2.5 px-4">Loại Nhãn (Entity Tag)</th>
-                                <th className="py-2.5 px-4">Vị trí (Start - End)</th>
-                                <th className="py-2.5 px-4">Độ tin cậy (Confidence)</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800 font-mono">
-                            {result.entities.map((ent, idx) => {
-                                const meta = result.metadata?.[ent.label] || {};
-                                return (
-                                    <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
-                                        <td className="py-2.5 px-4 text-slate-500 font-bold">{idx + 1}</td>
-                                        <td className="py-2.5 px-4 font-sans font-semibold text-white">{ent.word}</td>
-                                        <td className="py-2.5 px-4">
-                                            <span
-                                                className="inline-block px-2 py-0.5 rounded text-[11px] font-bold"
-                                                style={{
-                                                    backgroundColor: meta.bg || '#334155',
-                                                    color: meta.color || '#F8FAFC',
-                                                    border: `1px solid ${meta.border || '#475569'}`,
-                                                }}
-                                            >
-                                                {ent.label} ({meta.name || ent.label})
-                                            </span>
-                                        </td>
-                                        <td className="py-2.5 px-4 text-slate-400">{ent.start} - {ent.end}</td>
-                                        <td className="py-2.5 px-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-16 bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                                                    <div
-                                                        className="bg-indigo-500 h-full rounded-full"
-                                                        style={{ width: `${Math.round((ent.confidence || 0.9) * 100)}%` }}
-                                                    />
-                                                </div>
-                                                <span className="text-indigo-300 font-bold">
-                                                    {Math.round((ent.confidence || 0.9) * 100)}%
+                <div style={{
+                    background: 'var(--canvas)',
+                    border: '1px solid var(--hairline)',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                }}>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{
+                            width: '100%',
+                            borderCollapse: 'collapse',
+                            fontFamily: 'var(--font-sans)',
+                            fontSize: '13px',
+                        }}>
+                            <thead>
+                                <tr style={{
+                                    background: 'var(--surface-card)',
+                                    borderBottom: '1px solid var(--hairline)',
+                                }}>
+                                    {['#', 'Cụm từ thực thể', 'Loại nhãn', 'Vị trí', 'Độ tin cậy'].map((h, i) => (
+                                        <th key={i} style={{
+                                            padding: '10px 16px',
+                                            textAlign: 'left',
+                                            fontFamily: 'var(--font-sans)',
+                                            fontSize: '10px',
+                                            fontWeight: 600,
+                                            letterSpacing: '0.08em',
+                                            textTransform: 'uppercase',
+                                            color: 'var(--muted)',
+                                        }}>
+                                            {h}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {result.entities.map((ent, idx) => {
+                                    const meta = result.metadata?.[ent.label] || {};
+                                    const conf = Math.round((ent.confidence || 0.9) * 100);
+                                    return (
+                                        <tr
+                                            key={idx}
+                                            style={{
+                                                borderBottom: idx < result.entities.length - 1 ? '1px solid var(--hairline-soft)' : 'none',
+                                                transition: 'background 0.1s',
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-soft)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <td style={{ padding: '10px 16px', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--muted-soft)', fontWeight: 700 }}>
+                                                {idx + 1}
+                                            </td>
+                                            <td style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--body-strong)' }}>
+                                                {ent.word}
+                                            </td>
+                                            <td style={{ padding: '10px 16px' }}>
+                                                <span style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '5px',
+                                                    padding: '2px 10px',
+                                                    borderRadius: '9999px',
+                                                    fontSize: '11px',
+                                                    fontWeight: 600,
+                                                    fontFamily: 'var(--font-sans)',
+                                                    background: meta.bg || 'var(--surface-card)',
+                                                    color: meta.color || 'var(--muted)',
+                                                    border: `1px solid ${meta.border || 'var(--hairline)'}`,
+                                                }}>
+                                                    {ent.label}
+                                                    <span style={{ opacity: 0.6, fontWeight: 400, fontSize: '10px' }}>
+                                                        {meta.name ? `· ${meta.name}` : ''}
+                                                    </span>
                                                 </span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                                            </td>
+                                            <td style={{ padding: '10px 16px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--muted)' }}>
+                                                {ent.start}–{ent.end}
+                                            </td>
+                                            <td style={{ padding: '10px 16px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <div style={{
+                                                        width: '64px', height: '4px',
+                                                        background: 'var(--hairline)',
+                                                        borderRadius: '9999px',
+                                                        overflow: 'hidden',
+                                                    }}>
+                                                        <div style={{
+                                                            height: '100%',
+                                                            width: `${conf}%`,
+                                                            background: conf > 85 ? 'var(--teal)' : conf > 65 ? 'var(--amber)' : 'var(--error)',
+                                                            borderRadius: '9999px',
+                                                            transition: 'width 0.4s ease',
+                                                        }} />
+                                                    </div>
+                                                    <span style={{
+                                                        fontFamily: 'var(--font-mono)',
+                                                        fontSize: '11px',
+                                                        fontWeight: 600,
+                                                        color: conf > 85 ? 'var(--teal)' : conf > 65 ? 'var(--amber)' : 'var(--error)',
+                                                    }}>
+                                                        {conf}%
+                                                    </span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
-            {/* Tab 2: Raw JSON code block */}
+            {/* JSON view — dark code-window-card style */}
             {activeTab === 'json' && (
-                <pre className="bg-slate-950 p-4 rounded-xl text-xs font-mono text-emerald-400 overflow-x-auto border border-slate-800 max-h-80 shadow-inner">
-                    {JSON.stringify(result, null, 2)}
-                </pre>
+                <div style={{
+                    background: 'var(--surface-dark)',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    border: '1px solid rgba(250,249,245,0.06)',
+                }}>
+                    {/* Window chrome */}
+                    <div style={{
+                        padding: '10px 16px',
+                        borderBottom: '1px solid rgba(250,249,245,0.07)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: 'var(--surface-dark-elevated)',
+                    }}>
+                        {['#c64545', '#e8a55a', '#5db872'].map((c, i) => (
+                            <span key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', background: c, opacity: 0.7 }} />
+                        ))}
+                        <span style={{
+                            marginLeft: '8px',
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '11px',
+                            color: 'var(--on-dark-soft)',
+                        }}>
+                            api_response.json
+                        </span>
+                    </div>
+
+                    <pre className="code-block" style={{
+                        background: 'var(--surface-dark-soft)',
+                        borderRadius: 0,
+                        maxHeight: '360px',
+                        overflow: 'auto',
+                        color: '#a8d4a8',
+                        border: 'none',
+                        margin: 0,
+                    }}>
+                        {JSON.stringify(result, null, 2)}
+                    </pre>
+                </div>
             )}
         </div>
     );

@@ -1,35 +1,87 @@
 import React from "react";
-import { Cpu, Sparkles, Activity } from 'lucide-react';
+import { Activity } from 'lucide-react';
 
 export default function Navbar({ healthInfo }) {
+    const isOnline = healthInfo?.is_real_model_loaded;
+
     return (
-        <nav className="glass-panel sticky top-0 z-50 px-6 py-4 mb-8 flex flex-wrap items-center justify-between border-b border-slate-700/50">
-            <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-xl shadow-lg shadow-indigo-500/30">
-                    <Cpu className="w-6 h-6 text-white" />
-                </div>
+        <nav style={{
+            background: 'var(--canvas)',
+            borderBottom: '1px solid var(--hairline)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 24px',
+            height: '60px',
+            position: 'sticky',
+            top: 0,
+            zIndex: 30,
+            flexShrink: 0,
+        }}>
+            {/* Left: Title */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <div>
-                    <h1 className="text-xl font-bold font-heading bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">
-                        PhoBERT NER System
+                    <h1 style={{
+                        fontFamily: 'var(--font-display)',
+                        fontSize: '20px',
+                        fontWeight: 500,
+                        letterSpacing: '-0.025em',
+                        color: 'var(--ink)',
+                        lineHeight: 1.15,
+                    }}>
+                        Clinical AI Studio
                     </h1>
-                    <p className="text-xs text-slate-400 font-medium">
-                        Nhận dạng Thực thể Tên riêng Tiếng Việt
+                    <p style={{
+                        fontFamily: 'var(--font-sans)',
+                        fontSize: '11px',
+                        color: 'var(--muted)',
+                        lineHeight: 1.3,
+                        letterSpacing: '0.02em',
+                    }}>
+                        PhoBERT Vietnamese NER · PhoNER COVID-19
                     </p>
                 </div>
             </div>
 
-            <div className="flex items-center gap-4 mt-3 sm:mt-0">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-xs">
-                    <Activity className={`w-3.5 h-3.5 ${healthInfo?.is_real_model_loaded ? 'text-emerald-400 animate-pulse' : 'text-amber-400'}`} />
-                    <span className="text-slate-300 font-medium">
-                        {healthInfo?.engine || 'Đang kết nối API...'}
+            {/* Right: Status */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    padding: '5px 14px',
+                    borderRadius: '9999px',
+                    border: '1px solid var(--hairline)',
+                    background: 'var(--surface-soft)',
+                }}>
+                    <Activity style={{
+                        width: 12, height: 12,
+                        color: isOnline ? 'var(--success)' : 'var(--amber)',
+                    }}
+                        className={isOnline ? 'animate-pulse-dot' : ''}
+                    />
+                    <span style={{
+                        fontFamily: 'var(--font-sans)',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        color: 'var(--muted)',
+                    }}>
+                        {healthInfo?.engine || 'Kết nối API...'}
                     </span>
                 </div>
 
-                <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 text-xs font-semibold">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>vinai/phobert-base-v2</span>
-                </div>
+                <span style={{
+                    display: 'none',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '11px',
+                    color: 'var(--muted-soft)',
+                    padding: '4px 12px',
+                    border: '1px solid var(--hairline)',
+                    borderRadius: '9999px',
+                    background: 'var(--canvas)',
+                }}>
+                    vinai/phobert-base-v2
+                </span>
             </div>
         </nav>
     );

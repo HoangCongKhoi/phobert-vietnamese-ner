@@ -1,6 +1,7 @@
 # IDE / Editor
 .idea/
 .vscode/
+.kiro/
 
 # Python Cache
 __pycache__/
