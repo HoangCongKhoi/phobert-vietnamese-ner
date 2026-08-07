@@ -1,7 +1,7 @@
 import React from "react";
 import { Filter, Check, EyeOff } from "lucide-react";
 
-export default function EntityLengend({ metadata, activeFilters, onToggleFilter, onSelectAll, onDeselectAll }) {
+export default function EntityLegend({ metadata, activeFilters, onToggleFilter, onSelectAll, onDeselectAll }) {
     if (!metadata) return null;
 
     const labels = Object.keys(metadata);

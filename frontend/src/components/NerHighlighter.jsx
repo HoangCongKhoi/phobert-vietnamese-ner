@@ -1,5 +1,5 @@
 import React from "react";
-import { Tag, Zap, AlertCircle } from "lucide-react";
+import { Tag, Zap } from "lucide-react";
 
 export default function NerHighlighter({ result, activeFilters, isLoading }) {
     if (isLoading) {
@@ -20,7 +20,7 @@ export default function NerHighlighter({ result, activeFilters, isLoading }) {
         );
     }
 
-    const { spans, entities, inference_time_ms, model_type } = result;
+    const { spans, entities, inference_time_ms } = result;
 
     return (
         <div className="glass-panel p-6 mb-6">
@@ -51,7 +51,7 @@ export default function NerHighlighter({ result, activeFilters, isLoading }) {
                     }
 
                     const isVisible = activeFilters[span.label] !== false;
-                    const meta = span.metadata || {};
+                    const meta = result.metadata?.[span.label] || span.metadata || {};
 
                     if (!isVisible) {
                         return <span key={idx}>{span.text}</span>;
