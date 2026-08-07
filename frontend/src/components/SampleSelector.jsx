@@ -21,37 +21,36 @@ const SAMPLES = [
 
 export default function SampleSelector({ onSelectSample }) {
   return (
-    <div className="mb-6">
-      <div className="flex items-center gap-2 mb-3">
-        <BookOpen className="w-4 h-4 text-indigo-400" />
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+    <div className="mb-4">
+      <div className="flex items-center gap-2 mb-2">
+        <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+        <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
           Mẫu câu thử nghiệm nhanh (1-Click Presets)
         </h3>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="flex flex-col gap-2">
         {SAMPLES.map((sample, idx) => (
           <button
             key={idx}
             onClick={() => onSelectSample(sample.text)}
-            className="glass-card p-3.5 text-left flex flex-col justify-between group cursor-pointer"
+            className="glass-card p-2.5 text-left flex items-center justify-between gap-3 group cursor-pointer hover:border-indigo-500/50 transition-all bg-slate-900/60"
           >
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <span className="text-xs font-semibold text-indigo-300 group-hover:text-indigo-200 transition-colors">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-xs font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors">
                   {sample.title}
                 </span>
-                <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700">
+                <span className="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 font-mono">
                   {sample.category}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                "{sample.text}"
+              <p className="text-[11px] text-slate-400 truncate max-w-full">
+                {sample.text}
               </p>
             </div>
-            <div className="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-end text-[11px] text-indigo-400 font-medium group-hover:translate-x-0.5 transition-transform">
-              <span>Thử ngay</span>
-              <Sparkles className="w-3 h-3 ml-1" />
+            <div className="flex-shrink-0 text-indigo-400 group-hover:translate-x-0.5 transition-transform p-1 rounded-md bg-indigo-950/40 border border-indigo-800/40">
+              <Sparkles className="w-3.5 h-3.5" />
             </div>
           </button>
         ))}
