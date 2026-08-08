@@ -1,10 +1,15 @@
 import os
 import re
+import sys
 import time
 from typing import List, Dict, Any
 
 try:
     import torch
+    import torch.nn as nn
+    from peft import LoraConfig, get_peft_model
+    from torchcrf import CRF
+    from transformers import AutoModel, AutoTokenizer
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -12,7 +17,12 @@ except ImportError:
 
 # Path to trained model
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR, "trained_models", "best_phobert_model")
+CHECKPOINT_PATH = os.path.join(BASE_DIR, "trained_models", "best_phobert_lora.pt")
+MODEL_NAME = os.path.join(BASE_DIR, "trained_models", "phobert-base-v2")
+
+# Permit the API to import the shared dataset loader when started from backend/.
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
 # Entities color metadata mapping for frontend UI rendering
 ENTITY_METADATA = {
@@ -28,30 +38,97 @@ ENTITY_METADATA = {
     "DISEASE": {"name": "Tên bệnh / Vi-rút", "color": "#991B1B", "bg": "#FEE2E2", "border": "#FCA5A5"},
 }
 
+# Model architecture definition
+class PhoBertLoRACRF(nn.Module):
+    def __init__(self, model_name, num_labels, pad_label_id=0):
+        super().__init__()
+        base_phobert = AutoModel.from_pretrained(model_name, local_files_only=True)
+        peft_config = LoraConfig(
+            r=16,
+            lora_alpha=32,
+            target_modules=["query", "key", "value", "dense"],
+            bias="none",
+        )
+        self.phobert = get_peft_model(base_phobert, peft_config)
+        hidden_size = base_phobert.config.hidden_size
+        self.dropout = nn.Dropout(0.1)
+        self.classifier = nn.Linear(hidden_size, num_labels)
+        self.crf = CRF(num_tags=num_labels, batch_first=True)
+        self.pad_label_id = pad_label_id
+
+    def forward(self, input_ids, attention_mask):
+        emissions = self.get_emissions(input_ids, attention_mask)
+        return self.crf.decode(emissions, mask=attention_mask.bool())
+
+    def get_emissions(self, input_ids, attention_mask):
+        outputs = self.phobert(input_ids=input_ids, attention_mask=attention_mask)
+        sequence_output = self.dropout(outputs.last_hidden_state)
+        return self.classifier(sequence_output)
+
 class PhoBertNERInference:
     def __init__(self):
         self.model = None
         self.tokenizer = None
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") if HAS_TORCH else "cpu"
         self.is_real_model_loaded = False
+        self.label2id = None
+        self.id2label = None
         self._load_model()
 
     def _load_model(self):
-        if HAS_TORCH and os.path.exists(MODEL_PATH) and os.path.exists(os.path.join(MODEL_PATH, "config.json")):
-            try:
-                from transformers import AutoTokenizer, AutoModelForTokenClassification
-                print(f"[NER Engine] Loading trained PhoBERT model from {MODEL_PATH}...")
-                self.tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-                self.model = AutoModelForTokenClassification.from_pretrained(MODEL_PATH)
-                self.model.to(self.device)
-                self.model.eval()
-                self.is_real_model_loaded = True
-                print("[NER Engine] Successfully loaded local PhoBERT model!")
-            except Exception as e:
-                print(f"[NER Engine] Failed to load local model ({e}). Falling back to Smart Engine.")
-                self.is_real_model_loaded = False
-        else:
-            print(f"[NER Engine] Model checkpoint at '{MODEL_PATH}' not found yet. Smart Engine enabled for UI demo.")
+        if not HAS_TORCH:
+            print("[NER Engine] PyTorch not available. Smart Engine enabled.")
+            self.is_real_model_loaded = False
+            return
+            
+        if not os.path.exists(CHECKPOINT_PATH):
+            print(f"[NER Engine] Checkpoint at '{CHECKPOINT_PATH}' not found. Smart Engine enabled for UI demo.")
+            self.is_real_model_loaded = False
+            return
+
+        try:
+            print(f"[NER Engine] Loading PhoBERT checkpoint from {CHECKPOINT_PATH}...")
+            
+            # Load label mappings from dataset
+            from src.dataloader import load_phoner_dataset
+            DATA_DIR = os.path.join(BASE_DIR, "PhoNER_COVID19-main", "data", "word")
+            train_dataset, _, _ = load_phoner_dataset(DATA_DIR)
+            
+            unique_labels = set(tag for tags in train_dataset["ner_tags"] for tag in tags)
+            label_list = sorted(list(unique_labels))
+            self.label2id = {label: i for i, label in enumerate(label_list)}
+            self.id2label = {i: label for i, label in enumerate(label_list)}
+            
+            print(f"[NER Engine] Loaded {len(label_list)} entity labels: {label_list}")
+            
+            # Load tokenizer
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                MODEL_NAME, local_files_only=True
+            )
+            
+            # Initialize model architecture
+            o_label_id = self.label2id.get("O", 0)
+            self.model = PhoBertLoRACRF(
+                MODEL_NAME, 
+                num_labels=len(label_list), 
+                pad_label_id=o_label_id
+            )
+            
+            # Load checkpoint weights
+            checkpoint = torch.load(CHECKPOINT_PATH, map_location=self.device)
+            self.model.load_state_dict(checkpoint["model"])
+            self.model.to(self.device)
+            self.model.eval()
+            
+            self.is_real_model_loaded = True
+            print("[NER Engine] Successfully loaded PhoBERT + LoRA + CRF model!")
+            print(f"[NER Engine]   - Epoch: {checkpoint.get('epoch', 'unknown')}")
+            print(f"[NER Engine]   - Best F1: {checkpoint.get('best_f1', 'unknown'):.4f}")
+            
+        except Exception as e:
+            print(f"[NER Engine] Failed to load checkpoint: {e}")
+            import traceback
+            traceback.print_exc()
             self.is_real_model_loaded = False
 
     def predict(self, text: str) -> Dict[str, Any]:
@@ -78,79 +155,150 @@ class PhoBertNERInference:
             "spans": spans,
             "metadata": ENTITY_METADATA,
             "inference_time_ms": elapsed_ms,
+            "confidence_method": (
+                "CRF token marginals aggregated with geometric mean"
+                if self.is_real_model_loaded
+                else "Rule-based fallback score"
+            ),
             "model_type": "PhoBERT (PyTorch Fine-tuned)" if self.is_real_model_loaded else "PhoBERT NER Engine (Smart Demo Mode)",
             "status": "success"
         }
 
+    def _crf_token_marginals(self, emissions, attention_mask):
+        """Return exact per-token CRF marginals for a single inference batch."""
+        valid_length = int(attention_mask[0].sum().item())
+        emissions = emissions[0, :valid_length]
+        transitions = self.model.crf.transitions
+
+        forward_scores = [self.model.crf.start_transitions + emissions[0]]
+        for timestep in range(1, valid_length):
+            next_scores = forward_scores[-1].unsqueeze(1) + transitions
+            forward_scores.append(
+                torch.logsumexp(next_scores, dim=0) + emissions[timestep]
+            )
+
+        backward_scores = [None] * valid_length
+        backward_scores[-1] = self.model.crf.end_transitions
+        for timestep in range(valid_length - 2, -1, -1):
+            next_scores = (
+                transitions
+                + emissions[timestep + 1].unsqueeze(0)
+                + backward_scores[timestep + 1].unsqueeze(0)
+            )
+            backward_scores[timestep] = torch.logsumexp(next_scores, dim=1)
+
+        log_partition = torch.logsumexp(
+            forward_scores[-1] + self.model.crf.end_transitions, dim=0
+        )
+        return torch.stack(
+            [torch.exp(alpha + beta - log_partition)
+             for alpha, beta in zip(forward_scores, backward_scores)]
+        )
+
+    @staticmethod
+    def _finalize_entity(entity):
+        """Aggregate exact token marginals into a stable entity-level score."""
+        token_confidences = entity.pop("_token_confidences")
+        log_confidence = sum(
+            torch.log(torch.tensor(max(score, 1e-12))).item()
+            for score in token_confidences
+        ) / len(token_confidences)
+        entity["confidence"] = round(float(torch.exp(torch.tensor(log_confidence))), 4)
+        return entity
+
     def _predict_with_torch(self, text: str) -> List[Dict[str, Any]]:
+        """Predict using PhoBERT + LoRA + CRF model"""
         words = text.split()
-        subwords = [self.tokenizer.bos_token_id]
+        
+        # Encode words to subwords
+        subwords = [self.tokenizer.bos_token_id if self.tokenizer.bos_token_id is not None else 0]
         word_to_subword_idx = []
 
         for w_idx, word in enumerate(words):
             tokens = self.tokenizer.encode(word, add_special_tokens=False)
             if tokens:
+                word_to_subword_idx.append((w_idx, len(subwords)))
                 subwords.extend(tokens)
-                word_to_subword_idx.append((w_idx, len(subwords) - len(tokens), len(subwords)))
 
-        subwords.append(self.tokenizer.eos_token_id)
+        subwords.append(self.tokenizer.eos_token_id if self.tokenizer.eos_token_id is not None else 2)
+        
         input_ids = torch.tensor([subwords]).to(self.device)
+        attention_mask = torch.ones_like(input_ids).to(self.device)
 
+        # Decode the most likely CRF path and calculate its per-token marginals.
         with torch.no_grad():
-            outputs = self.model(input_ids)
-            probs = torch.softmax(outputs.logits, dim=2)[0]
-            preds = torch.argmax(probs, dim=1).cpu().numpy()
-            confidences = torch.max(probs, dim=1).values.cpu().numpy()
+            emissions = self.model.get_emissions(
+                input_ids=input_ids, attention_mask=attention_mask
+            )
+            pred_seq = self.model.crf.decode(
+                emissions, mask=attention_mask.bool()
+            )[0]
+            token_marginals = self._crf_token_marginals(emissions, attention_mask)
 
-        id2label = self.model.config.id2label
+        # Map predictions back to words
         entities = []
         curr_entity = None
         current_char_offset = 0
 
-        for idx, word in enumerate(words):
-            subword_start = None
-            for w_i, s_start, s_end in word_to_subword_idx:
-                if w_i == idx:
-                    subword_start = s_start
+        for w_idx, word in enumerate(words):
+            # Find corresponding subword prediction
+            subword_pos = None
+            for word_i, sub_pos in word_to_subword_idx:
+                if word_i == w_idx:
+                    subword_pos = sub_pos
                     break
 
-            if subword_start is not None and subword_start < len(preds):
-                pred_id = preds[subword_start]
-                conf = float(confidences[subword_start])
-                raw_tag = id2label.get(pred_id, "O")
+            if subword_pos is not None and subword_pos < len(pred_seq):
+                pred_id = pred_seq[subword_pos]
+                raw_tag = self.id2label.get(pred_id, "O")
+                token_confidence = float(token_marginals[subword_pos, pred_id].item())
             else:
                 raw_tag = "O"
-                conf = 0.95
+                token_confidence = 0.0
 
+            # Calculate character position
             start_pos = text.find(word, current_char_offset)
             if start_pos == -1:
                 start_pos = current_char_offset
             end_pos = start_pos + len(word)
             current_char_offset = end_pos
 
-            if raw_tag != "O":
-                label = raw_tag.split("-")[-1] if "-" in raw_tag else raw_tag
-                if curr_entity and curr_entity["label"] == label and start_pos <= curr_entity["end"] + 2:
+            # Build entities from BIO tags
+            if raw_tag.startswith("B-"):
+                if curr_entity:
+                    entities.append(self._finalize_entity(curr_entity))
+                label = raw_tag[2:]
+                curr_entity = {
+                    "word": word,
+                    "label": label,
+                    "start": start_pos,
+                    "end": end_pos,
+                    "_token_confidences": [token_confidence],
+                }
+            elif raw_tag.startswith("I-") and curr_entity:
+                label = raw_tag[2:]
+                if label == curr_entity["label"] and start_pos <= curr_entity["end"] + 2:
+                    # Continue entity
                     curr_entity["end"] = end_pos
                     curr_entity["word"] = text[curr_entity["start"]:end_pos]
-                    curr_entity["confidence"] = round((curr_entity["confidence"] + conf) / 2, 3)
+                    curr_entity["_token_confidences"].append(token_confidence)
                 else:
-                    if curr_entity:
-                        entities.append(curr_entity)
+                    # New entity
+                    entities.append(self._finalize_entity(curr_entity))
                     curr_entity = {
                         "word": word,
                         "label": label,
                         "start": start_pos,
                         "end": end_pos,
-                        "confidence": round(conf, 3)
+                        "_token_confidences": [token_confidence],
                     }
             else:
                 if curr_entity:
-                    entities.append(curr_entity)
+                    entities.append(self._finalize_entity(curr_entity))
                     curr_entity = None
 
         if curr_entity:
-            entities.append(curr_entity)
+            entities.append(self._finalize_entity(curr_entity))
 
         return entities
 

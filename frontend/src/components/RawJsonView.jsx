@@ -90,7 +90,8 @@ export default function RawJsonView({ result }) {
                             <tbody>
                                 {result.entities.map((ent, idx) => {
                                     const meta = result.metadata?.[ent.label] || {};
-                                    const conf = Math.round((ent.confidence || 0.9) * 100);
+                                    const conf = (ent.confidence ?? 0) * 100;
+                                    const confidenceLabel = `${conf.toFixed(2)}%`;
                                     return (
                                         <tr
                                             key={idx}
@@ -152,7 +153,7 @@ export default function RawJsonView({ result }) {
                                                         fontWeight: 600,
                                                         color: conf > 85 ? 'var(--teal)' : conf > 65 ? 'var(--amber)' : 'var(--error)',
                                                     }}>
-                                                        {conf}%
+                                                        {confidenceLabel}
                                                     </span>
                                                 </div>
                                             </td>
