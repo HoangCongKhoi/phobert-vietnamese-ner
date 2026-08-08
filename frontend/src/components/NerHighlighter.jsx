@@ -142,6 +142,8 @@ export default function NerHighlighter({ result, activeFilters, isLoading }) {
 
                     const isVisible = activeFilters[span.label] !== false;
                     const meta = result.metadata?.[span.label] || span.metadata || {};
+                    const confidence = span.confidence ?? 0;
+                    const confidenceLabel = `${(confidence * 100).toFixed(2)}%`;
 
                     if (!isVisible) {
                         return <span key={idx} style={{ color: 'var(--ink)' }}>{span.text}</span>;
@@ -157,7 +159,7 @@ export default function NerHighlighter({ result, activeFilters, isLoading }) {
                                 borderColor: meta.border || '#e6dfd8',
                                 position: 'relative',
                             }}
-                            title={`${meta.name || span.label} · ${Math.round((span.confidence || 0.95) * 100)}% confidence`}
+                            title={`${meta.name || span.label} · ${confidenceLabel} confidence`}
                         >
                             <span style={{ fontWeight: 600 }}>{span.text}</span>
                             <span
@@ -194,7 +196,7 @@ export default function NerHighlighter({ result, activeFilters, isLoading }) {
                             >
                                 <span style={{ color: 'var(--on-dark)' }}>{meta.name || span.label}</span>
                                 <span style={{ color: 'var(--on-dark-soft)', marginLeft: '6px', fontFamily: 'var(--font-mono)' }}>
-                                    {Math.round((span.confidence || 0.95) * 100)}%
+                                    {confidenceLabel}
                                 </span>
                             </span>
                         </span>
