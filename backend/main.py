@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Literal
+
 from pydantic import BaseModel
 from ner_engine import ner_engine
 
@@ -20,6 +22,7 @@ app.add_middleware(
 
 class TextPayload(BaseModel):
     text: str
+    model: Literal["phobert", "xlm-roberta"] = "phobert"
 
 @app.get("/")
 def read_root():
@@ -34,7 +37,9 @@ def health_check():
     return {
         "status": "healthy",
         "is_real_model_loaded": ner_engine.is_real_model_loaded,
-        "engine": "PyTorch PhoBERT" if ner_engine.is_real_model_loaded else "Smart Demo NER Engine"
+        "engine": ner_engine.engine_name,
+        "active_model": ner_engine.active_model,
+        "models": ner_engine.model_statuses(),
     }
 
 @app.post("/api/predict")
@@ -43,7 +48,7 @@ def predict_ner(payload: TextPayload):
     if not text:
         raise HTTPException(status_code=400, detail="Text input cannot be empty.")
     
-    result = ner_engine.predict(text)
+    result = ner_engine.predict(text, payload.model)
     return result
 
 if __name__ == "__main__":

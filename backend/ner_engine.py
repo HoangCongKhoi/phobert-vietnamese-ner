@@ -2,6 +2,8 @@ import os
 import re
 import sys
 import time
+import gc
+import threading
 from typing import List, Dict, Any
 
 try:
@@ -9,7 +11,12 @@ try:
     import torch.nn as nn
     from peft import LoraConfig, get_peft_model
     from torchcrf import CRF
-    from transformers import AutoModel, AutoTokenizer
+    from transformers import (
+        AutoModel,
+        AutoTokenizer,
+        XLMRobertaConfig,
+        XLMRobertaModel,
+    )
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -19,6 +26,8 @@ except ImportError:
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHECKPOINT_PATH = os.path.join(BASE_DIR, "trained_models", "best_phobert_lora.pt")
 MODEL_NAME = os.path.join(BASE_DIR, "trained_models", "phobert-base-v2")
+XLMR_CHECKPOINT_PATH = os.path.join(BASE_DIR, "trained_models", "best_xlmr_lora.pt")
+XLMR_MODEL_PATH = os.path.join(BASE_DIR, "trained_models", "xlm-roberta")
 
 # Permit the API to import the shared dataset loader when started from backend/.
 if BASE_DIR not in sys.path:
@@ -64,6 +73,39 @@ class PhoBertLoRACRF(nn.Module):
         outputs = self.phobert(input_ids=input_ids, attention_mask=attention_mask)
         sequence_output = self.dropout(outputs.last_hidden_state)
         return self.classifier(sequence_output)
+
+
+class XLMRobertaLoRACRF(nn.Module):
+    """Architecture used to train best_xlmr_lora.pt."""
+
+    def __init__(self, num_labels):
+        super().__init__()
+        config = XLMRobertaConfig(
+            vocab_size=250002,
+            hidden_size=768,
+            num_hidden_layers=12,
+            num_attention_heads=12,
+            intermediate_size=3072,
+            max_position_embeddings=514,
+            type_vocab_size=1,
+            pad_token_id=1,
+            bos_token_id=0,
+            eos_token_id=2,
+        )
+        peft_config = LoraConfig(
+            r=16,
+            lora_alpha=32,
+            target_modules=["query", "value"],
+            bias="none",
+        )
+        self.xlmr = get_peft_model(XLMRobertaModel(config), peft_config)
+        self.dropout = nn.Dropout(0.1)
+        self.classifier = nn.Linear(config.hidden_size, num_labels)
+        self.crf = CRF(num_tags=num_labels, batch_first=True)
+
+    def get_emissions(self, input_ids, attention_mask):
+        outputs = self.xlmr(input_ids=input_ids, attention_mask=attention_mask)
+        return self.classifier(self.dropout(outputs.last_hidden_state))
 
 class PhoBertNERInference:
     def __init__(self):
@@ -372,4 +414,134 @@ class PhoBertNERInference:
 
         return spans
 
-ner_engine = PhoBertNERInference()
+class XLMRobertaNERInference(PhoBertNERInference):
+    """Inference engine for the local XLM-RoBERTa + LoRA + CRF checkpoint."""
+
+    def __init__(self):
+        self.model = None
+        self.tokenizer = None
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.is_real_model_loaded = False
+        self.label2id = None
+        self.id2label = None
+        self._load_model()
+
+    def _load_model(self):
+        if not os.path.exists(XLMR_CHECKPOINT_PATH):
+            print(f"[XLM-R Engine] Checkpoint at '{XLMR_CHECKPOINT_PATH}' not found.")
+            return
+
+        try:
+            print(f"[XLM-R Engine] Loading checkpoint from {XLMR_CHECKPOINT_PATH}...")
+            from src.dataloader import load_phoner_dataset
+
+            data_dir = os.path.join(BASE_DIR, "PhoNER_COVID19-main", "data", "word")
+            train_dataset, _, _ = load_phoner_dataset(data_dir)
+            label_list = sorted(
+                {tag for tags in train_dataset["ner_tags"] for tag in tags}
+            )
+            self.label2id = {label: index for index, label in enumerate(label_list)}
+            self.id2label = {index: label for index, label in enumerate(label_list)}
+
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                XLMR_MODEL_PATH, local_files_only=True
+            )
+            self.model = XLMRobertaLoRACRF(num_labels=len(label_list))
+            checkpoint = torch.load(XLMR_CHECKPOINT_PATH, map_location=self.device)
+            self.model.load_state_dict(checkpoint["model"], strict=True)
+            self.model.to(self.device)
+            self.model.eval()
+            self.is_real_model_loaded = True
+            print("[XLM-R Engine] Successfully loaded XLM-RoBERTa + LoRA + CRF model!")
+            print(f"[XLM-R Engine]   - Epoch: {checkpoint.get('epoch', 'unknown')}")
+            print(f"[XLM-R Engine]   - Best F1: {checkpoint.get('best_f1', 'unknown'):.4f}")
+        except Exception as error:
+            print(f"[XLM-R Engine] Failed to load checkpoint: {error}")
+            import traceback
+            traceback.print_exc()
+            self.is_real_model_loaded = False
+
+    def predict(self, text: str) -> Dict[str, Any]:
+        result = super().predict(text)
+        result["model_type"] = (
+            "XLM-RoBERTa (PyTorch Fine-tuned)"
+            if self.is_real_model_loaded
+            else "XLM-RoBERTa NER Engine (Smart Demo Mode)"
+        )
+        return result
+
+
+class NERModelManager:
+    """Keeps only the selected model in memory for CPU-friendly model switching."""
+
+    ENGINE_CLASSES = {
+        "phobert": PhoBertNERInference,
+        "xlm-roberta": XLMRobertaNERInference,
+    }
+    ENGINE_NAMES = {
+        "phobert": "PyTorch PhoBERT",
+        "xlm-roberta": "PyTorch XLM-RoBERTa",
+    }
+
+    def __init__(self):
+        self._lock = threading.RLock()
+        self._active_key = None
+        self._active_engine = None
+        self._activate("phobert")
+
+    @property
+    def is_real_model_loaded(self):
+        return bool(self._active_engine and self._active_engine.is_real_model_loaded)
+
+    @property
+    def active_model(self):
+        return self._active_key
+
+    @property
+    def engine_name(self):
+        if self.is_real_model_loaded:
+            return self.ENGINE_NAMES[self._active_key]
+        return "Smart Demo NER Engine"
+
+    def model_statuses(self):
+        return {
+            "phobert": {
+                "available": os.path.exists(CHECKPOINT_PATH),
+                "active": self._active_key == "phobert",
+            },
+            "xlm-roberta": {
+                "available": (
+                    os.path.exists(XLMR_CHECKPOINT_PATH)
+                    and os.path.isdir(XLMR_MODEL_PATH)
+                ),
+                "active": self._active_key == "xlm-roberta",
+            },
+        }
+
+    def _release_active_engine(self):
+        if not self._active_engine:
+            return
+        self._active_engine.model = None
+        self._active_engine.tokenizer = None
+        self._active_engine = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    def _activate(self, model_key: str):
+        if model_key not in self.ENGINE_CLASSES:
+            raise ValueError(f"Unsupported model: {model_key}")
+        if model_key == self._active_key and self._active_engine:
+            return
+
+        self._release_active_engine()
+        self._active_key = model_key
+        self._active_engine = self.ENGINE_CLASSES[model_key]()
+
+    def predict(self, text: str, model_key: str = "phobert") -> Dict[str, Any]:
+        with self._lock:
+            self._activate(model_key)
+            return self._active_engine.predict(text)
+
+
+ner_engine = NERModelManager()

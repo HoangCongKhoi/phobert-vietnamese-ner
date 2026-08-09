@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import EntityLegend from './components/EntityLegend';
@@ -7,7 +7,7 @@ import RawJsonView from './components/RawJsonView';
 import PatientDossier from './components/PatientDossier';
 import EntityGraph from './components/EntityGraph';
 import HeroWelcome from './components/HeroWelcome';
-import { Send, Eraser, RefreshCw, Network, Table, Eye, Command } from 'lucide-react';
+import { Send, Eraser, RefreshCw, Network, Table, Eye, Command, Zap, ChevronDown } from 'lucide-react';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
@@ -21,6 +21,9 @@ export default function App() {
   const [activeFilters, setActiveFilters] = useState({});
   const [activeTab, setActiveTab] = useState('highlighter'); // 'highlighter' | 'graph' | 'table'
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [selectedModel, setSelectedModel] = useState('phobert');
+  const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
+  const modelDropdownRef = useRef(null);
   const [isDark, setIsDark] = useState(() => {
     try { return localStorage.getItem('phobert_theme') === 'dark'; } catch { return false; }
   });
@@ -34,6 +37,23 @@ export default function App() {
   });
 
   useEffect(() => { checkHealth(); }, []);
+
+  // Close model dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target)) {
+        setIsModelMenuOpen(false);
+      }
+    };
+
+    if (isModelMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isModelMenuOpen]);
 
   // Sync data-theme to <html> for CSS variable switching
   useEffect(() => {
@@ -69,12 +89,16 @@ export default function App() {
       const res = await fetch(`${API_BASE_URL}/api/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ 
+          text,
+          model: selectedModel  // Send selected model to backend
+        }),
       });
 
       if (res.ok) {
         const data = await res.json();
         setResult(data);
+        await checkHealth();
       } else {
         throw new Error('API request failed');
       }
@@ -306,6 +330,7 @@ export default function App() {
               </button>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {/* Refresh Button */}
                 <button
                   onClick={checkHealth}
                   className="btn-icon"
@@ -315,6 +340,167 @@ export default function App() {
                   <RefreshCw style={{ width: 14, height: 14 }} />
                 </button>
 
+                {/* Model Selector Dropdown */}
+                <div ref={modelDropdownRef} style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setIsModelMenuOpen(!isModelMenuOpen)}
+                    className="btn-secondary"
+                    style={{
+                      height: '36px',
+                      padding: '0 12px',
+                      gap: '6px',
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      position: 'relative',
+                    }}
+                  >
+                    <Zap style={{
+                      width: 13,
+                      height: 13,
+                      color: 'var(--success)',
+                      fill: 'var(--success)',
+                    }} />
+                    <span>PyTorch {selectedModel === 'phobert' ? 'PhoBERT' : 'XLM-RoBERTa'}</span>
+                    <ChevronDown style={{
+                      width: 13,
+                      height: 13,
+                      transition: 'transform 0.2s ease',
+                      transform: isModelMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    }} />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {isModelMenuOpen && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 6px)',
+                      right: 0,
+                      minWidth: '220px',
+                      background: 'var(--surface-card)',
+                      border: '1px solid var(--hairline)',
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                      padding: '6px',
+                      zIndex: 1000,
+                      animation: 'dropdownFadeIn 0.15s ease-out',
+                    }}>
+                      <button
+                        onClick={() => {
+                          setSelectedModel('phobert');
+                          setIsModelMenuOpen(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '10px 12px',
+                          border: 'none',
+                          borderRadius: '8px',
+                          background: selectedModel === 'phobert' ? 'var(--surface-soft)' : 'transparent',
+                          cursor: 'pointer',
+                          transition: 'background 0.15s ease',
+                          outline: 'none',
+                          textAlign: 'left',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'var(--surface-soft)';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (selectedModel !== 'phobert') {
+                            e.currentTarget.style.background = 'transparent';
+                          }
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div style={{
+                            fontFamily: 'var(--font-sans)',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: 'var(--ink)',
+                            marginBottom: '2px',
+                          }}>
+                            PhoBERT
+                          </div>
+                          <div style={{
+                            fontFamily: 'var(--font-sans)',
+                            fontSize: '11px',
+                            color: 'var(--muted)',
+                          }}>
+                            Vietnamese NER
+                          </div>
+                        </div>
+                        {selectedModel === 'phobert' && (
+                          <div style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            background: 'var(--success)',
+                          }} />
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setSelectedModel('xlm-roberta');
+                          setIsModelMenuOpen(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '10px 12px',
+                          border: 'none',
+                          borderRadius: '8px',
+                          background: selectedModel === 'xlm-roberta' ? 'var(--surface-soft)' : 'transparent',
+                          cursor: 'pointer',
+                          transition: 'background 0.15s ease',
+                          outline: 'none',
+                          textAlign: 'left',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'var(--surface-soft)';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (selectedModel !== 'xlm-roberta') {
+                            e.currentTarget.style.background = 'transparent';
+                          }
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div style={{
+                            fontFamily: 'var(--font-sans)',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: 'var(--ink)',
+                            marginBottom: '2px',
+                          }}>
+                            XLM-RoBERTa
+                          </div>
+                          <div style={{
+                            fontFamily: 'var(--font-sans)',
+                            fontSize: '11px',
+                            color: 'var(--muted)',
+                          }}>
+                            Multilingual NER
+                          </div>
+                        </div>
+                        {selectedModel === 'xlm-roberta' && (
+                          <div style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            background: 'var(--success)',
+                          }} />
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Analyze Button */}
                 <button
                   onClick={() => analyzeText()}
                   disabled={isLoading || !inputText.trim()}
@@ -407,6 +593,20 @@ export default function App() {
           </span>
         </footer>
       </div>
+
+      {/* Dropdown Animation */}
+      <style>{`
+        @keyframes dropdownFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }
