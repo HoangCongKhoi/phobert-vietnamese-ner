@@ -95,4 +95,10 @@ Plaintext
 [Bệnh_viện_Chợ_Rẫy] -> LOCATION
 [TP.HCM]         -> LOCATION
 
+## Result And Visualize
+<img width="480" height="411" alt="765187046_28006279508984500_513813700124642708_n" src="https://github.com/user-attachments/assets/109ce496-177c-408b-ac7a-d5fcc5e3d1a3" />
+<img width="480" height="402" alt="765460074_1009379175330505_2404254830113339420_n" src="https://github.com/user-attachments/assets/27c7b506-2d9c-4a04-8be7-03957f62502f" />
+<img width="720" height="360" alt="765068925_1035081822607147_1465304685770446125_n" src="https://github.com/user-attachments/assets/bc8e9a95-fd6d-4825-9ae7-a84614c7f104" />
+<img width="480" height="411" alt="765351190_2555499021562963_5361058901700670072_n" src="https://github.com/user-attachments/assets/9de9e444-30c8-4521-ba82-d50cd14b6af0" />
+<img width="565" height="365" alt="766072515_3381951175321134_3760178432500091036_n" src="https://github.com/user-attachments/assets/dba9b7d3-c073-4c18-9f1f-1a13fdb2725f" />
 
