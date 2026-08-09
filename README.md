@@ -29,3 +29,70 @@ phobert-vietnamese-ner/
 ├── phoner_covid19_lora_f1_scores.png # Đồ thị F1-Score
 ├── requirements.txt         # Danh sách thư viện cần thiết
 └── README.md
+```
+##🛠️ Cài đặt môi trường
+1. Yêu cầu hệ thống
+Python >= 3.10
+
+PyTorch >= 2.0 (Khuyên dùng GPU CUDA để huấn luyện nhanh hơn)
+
+2. Các bước cài đặt
+Clone dự án về máy và cài đặt các thư viện cần thiết:
+# Clone repository
+git clone [https://github.com/USERNAME/phobert-vietnamese-ner.git](https://github.com/USERNAME/phobert-vietnamese-ner.git)
+cd phobert-vietnamese-ner
+
+# Tạo môi trường ảo (Khuyên dùng)
+python -m venv venv
+source venv/bin/activate  # Trên Windows dùng: venv\Scripts\activate
+
+# Cài đặt thư viện
+pip install -r requirements.txt
+
+##📖 Hướng dẫn sử dụng chi tiết (User Guide)
+Bước 1: Chuẩn bị dữ liệu
+Dữ liệu huấn luyện mặc định sử dụng tập dữ liệu PhoNER_COVID19 (hoặc tập dữ liệu CoNLL format tùy chỉnh).
+Đảm bảo file dữ liệu đã được giải nén đúng thư mục dữ liệu đầu vào.
+
+Bước 2: Huấn luyện mô hình (Training)
+Chạy script huấn luyện chính. Mô hình sẽ tự động tính toán Validation Loss/F1 sau mỗi Epoch và lưu lại Checkpoint tốt nhất:
+
+python src/model.py
+
+Output: File trọng số tốt nhất được lưu tại trained_models/best_phobert_lora.pt.
+
+Theo dõi tiến trình: Bạn có thể mở TensorBoard để xem biểu đồ Loss theo thời gian thực:
+
+Bash
+tensorboard --logdir runs/phobert_lora_crf_ner
+
+Bước 3: Đánh giá mô hình (Testing / Evaluation)
+Sau khi train xong, chạy script test.py để kiểm thử độ chính xác trên tập dữ liệu độc lập (Test Set):
+
+Bash
+python src/test.py
+Kết quả đầu ra sẽ hiển thị bảng báo cáo chi tiết:
+
+Các chỉ số Precision, Recall, F1-Score tổng thể (Micro / Macro F1).
+
+Chỉ số chi tiết cho từng loại thực thể (AGE, DATE, LOCATION, NAME, ORGANIZATION, PATIENT_ID, ...).
+
+Bước 4: Dự đoán văn bản mới (Inference)
+Để chạy dự đoán cho một hoặc nhiều câu tiếng Việt tùy ý, bạn dùng script inference.py:
+
+Bash
+python src/inference.py --text "Bệnh nhân 1234 (32 tuổi) đang điều trị tại Bệnh viện Chợ Rẫy TP.HCM."
+Trích xuất kết quả dự đoán:
+
+Plaintext
+[Bệnh_nhân]       -> O
+[1234]           -> PATIENT_ID
+[(32]            -> O
+[tuổi)]          -> AGE
+[đang]           -> O
+[điều_trị]       -> O
+[tại]            -> O
+[Bệnh_viện_Chợ_Rẫy] -> LOCATION
+[TP.HCM]         -> LOCATION
+
+
