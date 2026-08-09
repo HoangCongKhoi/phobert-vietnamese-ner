@@ -14,7 +14,6 @@ Dự án huấn luyện và triển khai mô hình Nhận dạng Thực thể T�
 - [🌐 Run Web Application](#-quick-start---chạy-web-application) - Hướng dẫn chạy Frontend + Backend
 - [🔧 Training Guide](#-training--evaluation) - Hướng dẫn training từ đầu
 - [📊 Results & Performance](#-results-and-visualize) - Xem kết quả models
-- [❓ Troubleshooting](#-troubleshooting) - Gặp lỗi? Xem đây
 
 ---
 
