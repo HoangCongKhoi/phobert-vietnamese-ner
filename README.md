@@ -49,7 +49,7 @@ source venv/bin/activate  # Trên Windows dùng: venv\Scripts\activate
 # Cài đặt thư viện
 pip install -r requirements.txt
 
-##📖 Hướng dẫn sử dụng chi tiết (User Guide)
+## 📖 Hướng dẫn sử dụng chi tiết (User Guide)
 Bước 1: Chuẩn bị dữ liệu
 Dữ liệu huấn luyện mặc định sử dụng tập dữ liệu PhoNER_COVID19 (hoặc tập dữ liệu CoNLL format tùy chỉnh).
 Đảm bảo file dữ liệu đã được giải nén đúng thư mục dữ liệu đầu vào.
