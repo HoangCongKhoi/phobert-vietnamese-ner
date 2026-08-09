@@ -30,7 +30,7 @@ phobert-vietnamese-ner/
 ├── requirements.txt         # Danh sách thư viện cần thiết
 └── README.md
 ```
-##🛠️ Cài đặt môi trường
+## 🛠️ Cài đặt môi trường
 1. Yêu cầu hệ thống
 Python >= 3.10
 
@@ -50,11 +50,11 @@ source venv/bin/activate  # Trên Windows dùng: venv\Scripts\activate
 pip install -r requirements.txt
 
 ## 📖 Hướng dẫn sử dụng chi tiết (User Guide)
-Bước 1: Chuẩn bị dữ liệu
+- Bước 1: Chuẩn bị dữ liệu
 Dữ liệu huấn luyện mặc định sử dụng tập dữ liệu PhoNER_COVID19 (hoặc tập dữ liệu CoNLL format tùy chỉnh).
 Đảm bảo file dữ liệu đã được giải nén đúng thư mục dữ liệu đầu vào.
 
-Bước 2: Huấn luyện mô hình (Training)
+- Bước 2: Huấn luyện mô hình (Training)
 Chạy script huấn luyện chính. Mô hình sẽ tự động tính toán Validation Loss/F1 sau mỗi Epoch và lưu lại Checkpoint tốt nhất:
 
 python src/model.py
@@ -66,7 +66,7 @@ Theo dõi tiến trình: Bạn có thể mở TensorBoard để xem biểu đồ
 Bash
 tensorboard --logdir runs/phobert_lora_crf_ner
 
-Bước 3: Đánh giá mô hình (Testing / Evaluation)
+- Bước 3: Đánh giá mô hình (Testing / Evaluation)
 Sau khi train xong, chạy script test.py để kiểm thử độ chính xác trên tập dữ liệu độc lập (Test Set):
 
 Bash
@@ -77,7 +77,7 @@ Các chỉ số Precision, Recall, F1-Score tổng thể (Micro / Macro F1).
 
 Chỉ số chi tiết cho từng loại thực thể (AGE, DATE, LOCATION, NAME, ORGANIZATION, PATIENT_ID, ...).
 
-Bước 4: Dự đoán văn bản mới (Inference)
+- Bước 4: Dự đoán văn bản mới (Inference)
 Để chạy dự đoán cho một hoặc nhiều câu tiếng Việt tùy ý, bạn dùng script inference.py:
 
 Bash
