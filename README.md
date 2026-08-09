@@ -265,13 +265,6 @@ Kết quả:
 - Dùng **PhoBERT** cho production với văn bản y tế tiếng Việt (đã có pre-trained weights)
 - Dùng **XLM-RoBERTa** khi cần xử lý văn bản đa ngôn ngữ (cần tự train hoặc tải từ HuggingFace)
 
-**Tải XLM-RoBERTa (optional):**
-```bash
-# Model sẽ tự động download khi chạy lần đầu
-# hoặc download thủ công từ HuggingFace:
-pip install huggingface_hub
-python -c "from transformers import AutoModel; AutoModel.from_pretrained('xlm-roberta-base', cache_dir='./trained_models/xlm-roberta-base')"
-```
 
 ## 📊 Results And Visualize
 
