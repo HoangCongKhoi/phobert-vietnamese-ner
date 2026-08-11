@@ -17,7 +17,7 @@ Ngoài pipeline huấn luyện, repository có ứng dụng demo gồm FastAPI v
 - [Tải model đã huấn luyện sẵn](#tải-model-đã-huấn-luyện-sẵn)
 - [Khởi chạy ứng dụng web](#khởi-chạy-ứng-dụng-web)
 - [Huấn luyện và đánh giá](#huấn-luyện-và-đánh-giá)
-- [Nhóm thực hiện](#nhóm-thực-hiện)
+- [Nhóm thực hiện](#nhóm-thực-hiện---uet---vnu)
 
 ## Bài toán và dữ liệu
 
