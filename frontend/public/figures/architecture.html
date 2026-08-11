@@ -1,0 +1,65 @@
+<main class="diagram" aria-label="Kiến trúc hệ thống Demo NER với PhoBERT làm engine lõi">
+  <h1>Kiến trúc hệ thống Demo NER</h1>
+  <p class="subtitle">Mô hình Client – Server phân tầng với PhoBERT là inference engine</p>
+
+  <section class="flow" aria-label="Luồng xử lý yêu cầu">
+    <article class="node client">
+      <span class="tag">CLIENT</span>
+      <h2>Frontend</h2>
+      <p>React + Vite</p>
+      <ul><li>Nhập văn bản y tế</li><li>Hiển thị thực thể trực quan</li></ul>
+    </article>
+    <div class="arrow request"><span>POST /api/predict</span><i>→</i><small>Văn bản + lựa chọn model</small></div>
+    <article class="node api">
+      <span class="tag">SERVER</span>
+      <h2>Backend API</h2>
+      <p>FastAPI + Pydantic</p>
+      <ul><li>Xác thực payload</li><li>Điều phối suy luận</li></ul>
+    </article>
+    <div class="arrow invoke"><span>predict()</span><i>→</i><small>Yêu cầu suy luận</small></div>
+    <article class="node engine">
+      <span class="tag">AI ENGINE</span>
+      <h2>PhoBERT Inference Engine</h2>
+      <p>PhoBERT + LoRA + CRF</p>
+      <ul><li>Tokenization</li><li>Nhận dạng thực thể NER</li></ul>
+    </article>
+  </section>
+
+  <section class="return" aria-label="Luồng phản hồi">
+    <div class="return-line"><span>Thực thể NER</span><b>←</b><span>JSON response</span><b>←</b><span>Render kết quả</span></div>
+    <p>Engine trả các thực thể (PATIENT_ID, AGE, LOCATION, SYMPTOM, …) → Backend đóng gói JSON → Frontend render displaCy, biểu đồ và hồ sơ bệnh án.</p>
+  </section>
+
+  <section class="legend" aria-label="Chú giải">
+    <span><i class="dot client-dot"></i> Giao diện người dùng</span>
+    <span><i class="dot api-dot"></i> Lớp dịch vụ API</span>
+    <span><i class="dot engine-dot"></i> Lớp suy luận AI</span>
+  </section>
+</main>
+
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f8fafc; font-family: Arial, "Segoe UI", sans-serif; color: #172033; }
+  .diagram { width: 100%; min-width: 0; min-height: 860px; padding: 66px 72px 58px; background: linear-gradient(135deg, #f8fafc 0%, #edf5fb 100%); }
+  h1 { text-align: center; margin: 0; font-size: 36px; letter-spacing: -.5px; color: #102a43; }
+  .subtitle { margin: 12px 0 64px; text-align: center; font-size: 19px; color: #526477; }
+  .flow { display: grid; grid-template-columns: 1fr 145px 1fr 145px 1.16fr; align-items: center; gap: 12px; }
+  .node { min-height: 303px; padding: 29px 29px 24px; border-radius: 18px; background: #fff; border: 2px solid #dce5ee; box-shadow: 0 14px 30px rgba(26, 63, 99, .10); }
+  .node h2 { margin: 16px 0 7px; font-size: 23px; }
+  .node p { margin: 0; font-size: 17px; font-weight: 700; }
+  .node ul { margin: 22px 0 0; padding-left: 19px; font-size: 16px; line-height: 1.75; color: #44566c; }
+  .tag { display: inline-block; padding: 6px 10px; border-radius: 99px; font-size: 12px; font-weight: 800; letter-spacing: 1px; }
+  .client { border-color: #99c9f0; } .client .tag { color: #075a9e; background: #dff0ff; } .client p { color: #0874bb; }
+  .api { border-color: #82d5c0; } .api .tag { color: #08775e; background: #dcf8ee; } .api p { color: #08775e; }
+  .engine { border-color: #b4a3ee; } .engine .tag { color: #5f3db6; background: #eeeaff; } .engine p { color: #6242b9; }
+  .arrow { position: relative; display: flex; flex-direction: column; align-items: center; color: #53667a; font-weight: 700; text-align: center; }
+  .arrow i { width: 100%; font-size: 66px; line-height: .75; font-style: normal; color: #3390cb; }
+  .arrow span { font-size: 15px; color: #1b668f; } .arrow small { margin-top: 12px; max-width: 160px; font-size: 13px; font-weight: 400; color: #65778a; }
+  .invoke i { color: #69917f; } .invoke span { color: #1e7158; }
+  .return { margin: 62px 66px 0; padding: 25px 34px 23px; border-radius: 16px; border: 1px solid #cbd8e5; background: #fff; text-align: center; box-shadow: 0 8px 20px rgba(26,63,99,.06); }
+  .return-line { display: flex; align-items: center; justify-content: center; gap: 28px; color: #1c576c; font-size: 18px; font-weight: 700; }
+  .return-line b { font-size: 35px; line-height: .7; color: #d27a43; }
+  .return p { margin: 16px 0 0; color: #5c6f82; font-size: 15px; line-height: 1.55; }
+  .legend { margin-top: 42px; display: flex; justify-content: center; gap: 44px; color: #56687a; font-size: 15px; }
+  .dot { display: inline-block; width: 12px; height: 12px; margin-right: 7px; border-radius: 50%; } .client-dot{background:#3b9ddd}.api-dot{background:#2cae87}.engine-dot{background:#7d63d2}
+</style>

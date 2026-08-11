@@ -1,380 +1,282 @@
-# 🇻🇳 PhoBERT + XLM-RoBERTa NER for Vietnamese Clinical Text
+# PhoBERT và XLM-RoBERTa cho NER tiếng Việt trong ngữ cảnh COVID-19
 
-Dự án huấn luyện và triển khai mô hình Nhận dạng Thực thể Tên (NER) trên văn bản y tế tiếng Việt với 2 kiến trúc:
-- **PhoBERT** + LoRA + CRF (Vietnamese-optimized)
-- **XLM-RoBERTa** (Multilingual NER)
+Dự án xây dựng, so sánh và triển khai mô hình **Named Entity Recognition (NER)** cho văn bản tiếng Việt liên quan đến dịch COVID-19. Hai mô hình được fine-tune trên bộ dữ liệu **PhoNER_COVID19** là:
 
-Đi kèm với giao diện web tương tác (React + FastAPI) để demo và sử dụng thực tế.
+- **PhoBERT-base-v2 + LoRA + CRF** — mô hình tiếng Việt chuyên biệt.
+- **XLM-RoBERTa-base + LoRA + CRF** — mô hình đa ngôn ngữ để đối chiếu và hỗ trợ kịch bản mở rộng sang ngôn ngữ khác.
 
----
+Ngoài pipeline huấn luyện, repository có ứng dụng demo gồm FastAPI và React để nhập văn bản, chọn mô hình, xem thực thể được tô sáng, biểu đồ quan hệ và JSON kết quả.
 
-## 🚀 Quick Links
+> Lưu ý: đây là dự án nghiên cứu/demo. Kết quả NER không thay thế việc xác minh nghiệp vụ hoặc quyết định y khoa.
 
-- [📥 Download Pre-trained Models](#3--tải-pre-trained-models-khuyên-dùng---bỏ-qua-training) - **Start here** nếu bạn chỉ muốn test
-- [🌐 Run Web Application](#-quick-start---chạy-web-application) - Hướng dẫn chạy Frontend + Backend
-- [🔧 Training Guide](#-training--evaluation) - Hướng dẫn training từ đầu
-- [📊 Results & Performance](#-results-and-visualize) - Xem kết quả models
+## Mục lục
 
----
+- [Bài toán và dữ liệu](#bài-toán-và-dữ-liệu)
+- [Cấu trúc thư mục](#cấu-trúc-thư-mục)
+- [Mô hình và phương pháp](#mô-hình-và-phương-pháp)
+- [Cài đặt và chạy demo](#cài-đặt-và-chạy-demo)
+- [Tải model đã huấn luyện sẵn](#tải-model-đã-huấn-luyện-sẵn)
+- [Huấn luyện và đánh giá](#huấn-luyện-và-đánh-giá)
+- [Kết quả và trực quan hóa](#kết-quả-và-trực-quan-hóa)
+- [Tài liệu tham khảo](#tài-liệu-tham-khảo)
+- [Nhóm thực hiện](#nhóm-thực-hiện)
 
-## 📌 Tính năng nổi bật (Features)
+## Bài toán và dữ liệu
 
-### 🔬 Models
-- **PhoBERT-base-v2 + LoRA + CRF:** Tối ưu cho tiếng Việt, tiết kiệm bộ nhớ GPU, độ chính xác cao với CRF layer
-- **XLM-RoBERTa:** Multilingual model, hỗ trợ cross-lingual NER
+NER là bài toán gán nhãn cho từng token trong câu và ghép các token liên tiếp thành thực thể có nghĩa. Ví dụ, với câu `Bệnh nhân 1234, 32 tuổi, điều trị tại Bệnh viện Chợ Rẫy ngày 15/08`, mô hình có thể nhận ra mã bệnh nhân, tuổi, tổ chức và thời gian.
 
-### 🌐 Web Application
-- **Frontend:** React + Vite với UI hiện đại (displaCy visualizer, Knowledge Graph, Entity Statistics)
-- **Backend:** FastAPI với endpoints RESTful
-- **Features:** 
-  - Real-time NER prediction với cả 2 models
-  - Interactive entity highlighting
-  - Knowledge graph visualization
-  - Patient dossier extraction
-  - History tracking
+Dữ liệu đầu vào sử dụng định dạng CoNLL: mỗi dòng chứa một token và nhãn BIO tương ứng; các câu được ngăn bởi dòng trống. Pipeline hiện dùng phiên bản `word` của PhoNER_COVID19. Bộ nhãn xuất hiện trong notebook gồm:
 
-### 🛠️ Training & Evaluation
-- **Tiền xử lý:** Hỗ trợ `pyvi` / `vncorenlp` cho văn bản tiếng Việt
-- **Visualization:** TensorBoard logging, Training curves, Confusion Matrix
-- **Dataset:** PhoNER COVID-19 (10 entity types: PATIENT_ID, NAME, AGE, GENDER, JOB, LOCATION, ORGANIZATION, SYMPTOM, DISEASE, DATE)
+`LOCATION`, `GENDER`, `SYMPTOM_AND_DISEASE`, `PATIENT_ID`, `TRANSPORTATION`, `DATE`, `NAME`, `ORGANIZATION`, `AGE`, `JOB`.
 
----
+Quy ước BIO đánh dấu biên thực thể: `B-` là token mở đầu, `I-` là token tiếp diễn và `O` là token ngoài thực thể. Vì nhãn `O` và một số lớp như `JOB` phân bố không cân bằng, đánh giá chính dựa trên F1 ở cấp thực thể thay vì accuracy đơn thuần.
 
-## 📁 Cấu trúc dự án (Project Structure)
+## Cấu trúc thư mục
 
 ```text
 phobert-vietnamese-ner/
-├── backend/                 # FastAPI Backend
-│   ├── main.py             # API endpoints
-│   └── ner_engine.py       # NER inference engine
-├── frontend/               # React Frontend
+├── backend/                         # FastAPI phục vụ suy luận
+│   ├── main.py                       # Khai báo API, CORS và endpoint
+│   └── ner_engine.py                 # Load/switch PhoBERT hoặc XLM-R, hậu xử lý span
+├── frontend/                         # Giao diện React + Vite
 │   ├── src/
-│   │   ├── components/     # React components (Navbar, Sidebar, EntityGraph, ...)
-│   │   ├── App.jsx         # Main app component
-│   │   └── main.jsx        # Entry point
-│   ├── package.json
-│   └── vite.config.js
-├── src/                    # Training & Evaluation scripts
-│   ├── dataloader.py       # Xử lý DataLoader và Batching
-│   ├── dataset.py          # Class PyTorch Dataset cho NER
-│   ├── model.py            # PhoBERT + LoRA + CRF & Training loop
-│   ├── test.py             # Đánh giá mô hình trên tập Test
-│   ├── inference.py        # CLI inference tool
-│   └── augment.py          # Data Augmentation
-├── trained_models/         # Thư mục chứa weights (.pt)
-│   ├── best_phobert_lora.pt
-│   └── phobert-base-v2/
-├── PhoNER_COVID19-main/    # Dataset
-├── runs/                   # TensorBoard logs
-├── requirements.txt        # Python dependencies
+│   │   ├── components/               # Highlight, graph, dossier, JSON, sidebar, ...
+│   │   ├── App.jsx                   # Màn hình ứng dụng chính
+│   │   └── main.jsx                  # Điểm khởi chạy React
+│   ├── public/figures/               # Tài nguyên minh họa cho frontend
+│   └── package.json                  # Scripts và dependencies JavaScript
+├── scripts/                          # Script huấn luyện độc lập
+│   ├── train_phobert.py              # PhoBERT + LoRA + CRF
+│   └── train_xlmr.py                 # XLM-RoBERTa + LoRA + CRF
+├── src/                              # Thành phần dùng chung cho training
+│   ├── dataloader.py                 # Đọc CoNLL thành Hugging Face Dataset
+│   └── augment.py                    # Tăng cường dữ liệu bằng hoán đổi thực thể
+├── PhoNER_COVID19-main/              # Dữ liệu và hướng dẫn gán nhãn gốc
+│   └── data/
+│       ├── word/                     # train/dev/test dạng word-level (.conll, .json)
+│       └── syllable/                 # train/dev/test dạng syllable-level
+├── trained_models/                   # Checkpoint và tokenizer cục bộ (không nên commit weights lớn)
+│   ├── phobert-base-v2/              # Tokenizer/cấu hình PhoBERT cục bộ
+│   └── xlm-roberta/                  # Adapter/tokenizer XLM-R cục bộ
+├── report                            # Báo cáo dự án
+├── figures/                          # Hình được sinh từ notebook phân tích
+├── model_comparison.ipynb            # EDA, train và so sánh hai mô hình
+├── requirements.txt                  # Dependencies Python
 └── README.md
 ```
-## 🛠️ Cài đặt môi trường
 
-### 1. Yêu cầu hệ thống
-- Python >= 3.10
-- Node.js >= 16.x (cho React frontend)
-- PyTorch >= 2.0 (Khuyên dùng GPU CUDA để huấn luyện nhanh hơn)
+Một số thư mục như `runs/` (TensorBoard) và checkpoint tốt nhất có thể được tạo khi train. Chúng không nhất thiết tồn tại ở bản clone mới.
 
-### 2. Các bước cài đặt
+## Mô hình và phương pháp
 
-**Clone repository:**
+### PhoBERT
+
+PhoBERT là mô hình ngôn ngữ tiền huấn luyện dành riêng cho tiếng Việt, dựa trên kiến trúc RoBERTa. Với dữ liệu tiếng Việt đã tách từ, PhoBERT tận dụng tokenizer BPE và biểu diễn ngữ cảnh đã được học từ kho ngữ liệu tiếng Việt lớn. Trong dự án, mỗi từ trong dữ liệu được mã hóa thành một hoặc nhiều subword; chỉ subword đầu tiên nhận nhãn BIO, các subword còn lại được bỏ qua khi tính loss (`-100`).
+
+Đây là lựa chọn phù hợp nhất khi dữ liệu đầu vào chủ yếu là tiếng Việt, vì backbone đã được tối ưu cho đặc điểm từ vựng và ngữ cảnh của tiếng Việt.
+
+### XLM-RoBERTa (XLM-R)
+
+XLM-RoBERTa là phiên bản đa ngôn ngữ của RoBERTa, được tiền huấn luyện trên dữ liệu CommonCrawl của hơn 100 ngôn ngữ. Trong dự án, XLM-R đóng vai trò baseline đa ngôn ngữ: tokenizer SentencePiece ánh xạ token đầu vào sang subword, sau đó nhãn được căn chỉnh bằng `word_ids()` của Hugging Face.
+
+XLM-R phù hợp khi cần một mô hình chung cho nhiều ngôn ngữ hoặc muốn khảo sát khả năng transfer learning. Với bài toán chỉ có tiếng Việt, hiệu năng thực nghiệm hiện tại thấp hơn PhoBERT, nhưng mô hình vẫn là một đối chứng có giá trị.
+
+### LoRA + CRF
+
+Cả hai backbone đều được fine-tune bằng cùng một hướng tiếp cận:
+
+- **LoRA (Low-Rank Adaptation):** chèn các ma trận hạng thấp vào một số lớp attention thay vì cập nhật toàn bộ trọng số backbone. Điều này giảm số tham số cần học và chi phí bộ nhớ.
+- **Dropout + linear classifier:** biến embedding theo từng token thành điểm phát xạ cho các nhãn BIO.
+- **CRF (Conditional Random Field):** học xác suất chuyển tiếp giữa các nhãn trong chuỗi, giúp hạn chế các chuỗi không hợp lệ như `O → I-LOCATION` mà không có `B-LOCATION` trước đó.
+- **Data augmentation:** script có thể sinh thêm mẫu bằng cách hoán đổi thực thể thuộc lớp hiếm, mặc định nhắm tới `JOB`.
+
+Các siêu tham số chính trong script: 10 epoch, batch size 16, `max_length=128`, LoRA rank 16, alpha 32, dropout 0,1 và warmup 10%. Hãy xem `model_comparison.ipynb` hoặc báo cáo dự án để biết phân tích đầy đủ.
+
+<p align="center">
+  <img src="figures/architecture.png" alt="Kiến trúc PhoBERT/XLM-RoBERTa kết hợp LoRA và CRF" width="760" />
+</p>
+
+<p align="center"><em>Kiến trúc tổng quan: backbone Transformer → LoRA → token classifier → CRF.</em></p>
+
+| Tiêu chí | PhoBERT-base-v2 | XLM-RoBERTa-base |
+|---|---|---|
+| Phạm vi ngôn ngữ | Tiếng Việt | Đa ngôn ngữ |
+| Tokenizer | BPE, phù hợp dữ liệu đã tách từ tiếng Việt | SentencePiece |
+| Vai trò trong dự án | Mô hình ưu tiên cho tiếng Việt | Baseline/tuỳ chọn đa ngôn ngữ |
+| Căn chỉnh nhãn | Thủ công theo subword | Qua `word_ids()` |
+
+## Cài đặt và chạy demo
+
+### Yêu cầu
+
+- Python 3.10+ (khuyến nghị có GPU CUDA khi huấn luyện)
+- Node.js 16+ và npm (để chạy frontend)
+
+### Cài đặt dependencies
+
 ```bash
-git clone https://github.com/USERNAME/phobert-vietnamese-ner.git
+git clone <repository-url>
 cd phobert-vietnamese-ner
-```
 
-**Cài đặt Python dependencies:**
-```bash
-# Tạo môi trường ảo (Khuyên dùng)
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Cài đặt thư viện Python
+python -m venv .venv
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
 
-**Cài đặt Frontend dependencies:**
-```bash
 cd frontend
 npm install
 cd ..
 ```
 
-### 3. 📥 Tải Pre-trained Models (Khuyên dùng - Bỏ qua training)
+### Tải model đã huấn luyện sẵn
 
-> 💡 **Nếu bạn chỉ muốn test/demo và không có thời gian training**, tải bộ models đã train sẵn từ Google Drive:
+Nếu chỉ muốn test hoặc demo mà không có thời gian huấn luyện, hãy tải bộ model đã train sẵn từ Google Drive: [Pre-trained Models – Google Drive](https://drive.google.com/drive/folders/1tdACXlSSQkGzdEDCa9EUhtzzRDiHTf1I?usp=drive_link) (khoảng 2,1 GB).
 
-**🔗 Download Link:** [Pre-trained Models - Google Drive](https://drive.google.com/drive/folders/1tdACXlSSQkGzdEDCa9EUhtzzRDiHTf1I) `[~1.3GB]`
+Bộ tải xuống gồm:
 
-**Nội dung bao gồm:**
-- `best_phobert_lora.pt` - LoRA fine-tuned weights (~50MB)
-- `phobert-base-v2/` - PhoBERT base model + tokenizer (~1.2GB)
-  - `config.json`
-  - `pytorch_model.bin`
-  - `tokenizer.json`
-  - `bpe.codes`
-  - `vocab.txt`
+- `best_phobert_lora.pt`: checkpoint PhoBERT + LoRA + CRF đã fine-tune (khoảng 500 MB).
+- `phobert-base-v2/`: PhoBERT base model và tokenizer (khoảng 500 MB), bao gồm `config.json`, `pytorch_model.bin`, `tokenizer.json`, `bpe.codes` và `vocab.txt`.
+- `best_xlmr_lora.pt`: checkpoint XLMR + LoRA đã fine-tune (khoảng 1 GB MB).
+- `xlm-roberta/`: XLM-RoBERTa base model và tokenizer (khoảng 18 MB), bao gồm `adapter_config.json`, `adapter_model.safetensors`, `tokenizer.json` và `tokenizer_config.json`.
 
-**Hướng dẫn cài đặt:**
+Tải toàn bộ thư mục `trained_models` (hoặc từng tệp tương ứng) rồi đặt tại thư mục gốc của dự án theo cấu trúc sau:
 
-1. **Download từ Google Drive:**
-   - Click vào link trên
-   - Download toàn bộ folder `trained_models`
-   - Hoặc download từng file riêng lẻ
+```text
+phobert-vietnamese-ner/
+└── trained_models/
+    ├── best_phobert_lora.pt
+    └── phobert-base-v2/
+        ├── config.json
+        ├── pytorch_model.bin
+        ├── tokenizer.json
+        ├── bpe.codes
+        └── vocab.txt
+    ... (tương tự cho XLM-RoBERTa)
+```
 
-2. **Đặt vào đúng vị trí:**
-   ```bash
-   # Đảm bảo cấu trúc thư mục như sau:
-   phobert-vietnamese-ner/
-   └── trained_models/
-       ├── best_phobert_lora.pt
-       └── phobert-base-v2/
-           ├── config.json
-           ├── pytorch_model.bin
-           ├── tokenizer.json
-           ├── bpe.codes
-           └── vocab.txt
-   ```
+Có thể kiểm tra nhanh vị trí file trước khi chạy backend:
 
-3. **Verify models đã đúng vị trí:**
-   ```bash
-   # Linux/Mac:
-   ls -lh trained_models/best_phobert_lora.pt
-   ls -lh trained_models/phobert-base-v2/
-   
-   # Windows:
-   dir trained_models\best_phobert_lora.pt
-   dir trained_models\phobert-base-v2\
-   ```
-
-✅ Sau khi có models, bạn có thể [chạy web application](#-quick-start---chạy-web-application) ngay lập tức!
-
-> ⚠️ **Lưu ý:** Nếu không tải models, backend sẽ tự động chạy ở **Demo Mode** với rule-based NER engine (độ chính xác thấp hơn nhưng vẫn hoạt động được để demo UI).
-
-## 📖 Hướng dẫn sử dụng chi tiết (User Guide)
-
-### 🚀 Quick Start - Chạy Web Application
-
-#### 1. Khởi động Backend API
 ```bash
-# Từ thư mục gốc của project
+# Linux/macOS
+ls -lh trained_models/best_phobert_lora.pt
+ls -lh trained_models/phobert-base-v2/
+
+# Windows PowerShell hoặc Command Prompt
+dir trained_models\best_phobert_lora.pt
+dir trained_models\phobert-base-v2\
+```
+
+Khi các tệp trên đã đúng vị trí, bạn có thể chạy ứng dụng web ngay. Nếu chưa tải model, backend vẫn chạy ở **Smart Demo Mode** với rule-based NER engine để demo giao diện; kết quả ở chế độ này có độ chính xác thấp hơn và không phải dự đoán của mô hình neural.
+
+### Khởi chạy ứng dụng web
+
+Mở hai terminal ở thư mục gốc dự án.
+
+```bash
+# Terminal 1: backend
 cd backend
 python main.py
 ```
-Backend sẽ chạy tại: `http://127.0.0.1:8000`
 
-Kiểm tra API: Mở browser tại `http://127.0.0.1:8000/docs` để xem Swagger API docs
+API chạy tại `http://127.0.0.1:8000`; Swagger UI tại `http://127.0.0.1:8000/docs`.
 
-#### 2. Khởi động Frontend
-Mở terminal mới:
 ```bash
+# Terminal 2: frontend
 cd frontend
 npm run dev
 ```
-Frontend sẽ chạy tại: `http://localhost:5173`
 
-#### 3. Sử dụng ứng dụng
-- Mở browser tại `http://localhost:5173`
-- Nhập hoặc chọn văn bản tiếng Việt mẫu
-- Chọn model (PhoBERT hoặc XLM-RoBERTa) từ dropdown
-- Click "Trích xuất NER" để xem kết quả
-- Khám phá các tab: displaCy Visualizer, Knowledge Graph, Thống kê & JSON
+Mở địa chỉ Vite hiển thị trong terminal (thường là `http://localhost:5173`). Người dùng có thể chọn `phobert` hoặc `xlm-roberta`, nhập văn bản và xem thực thể được đánh dấu.
 
----
+Endpoint suy luận:
 
-### 🔧 Training & Evaluation
-
-#### Bước 1: Chuẩn bị dữ liệu
-Dữ liệu huấn luyện mặc định sử dụng tập **PhoNER_COVID19** (hoặc tập dữ liệu CoNLL format tùy chỉnh).
-
-Đảm bảo file dữ liệu đã được giải nén đúng thư mục:
-```
-PhoNER_COVID19-main/
-├── data/
-│   ├── word/
-│   │   ├── train_word.conll
-│   │   ├── dev_word.conll
-│   │   └── test_word.conll
-```
-
-#### Bước 2: Huấn luyện mô hình (Training)
-
-**PhoBERT + LoRA + CRF:**
-```bash
-python src/model.py
-```
-
-**XLM-RoBERTa** (nếu có script riêng):
-```bash
-# Xem notebook: xlmr_model.ipynb
-jupyter notebook xlmr_model.ipynb
-```
-
-Output: File trọng số tốt nhất được lưu tại `trained_models/best_phobert_lora.pt`
-
-**Theo dõi tiến trình với TensorBoard:**
-```bash
-tensorboard --logdir runs/phobert_lora_crf_ner
-```
-
-#### Bước 3: Đánh giá mô hình (Testing / Evaluation)
-Sau khi train xong, chạy script test.py để kiểm thử độ chính xác trên tập Test:
-
-```bash
-python src/test.py
-```
-
-Kết quả đầu ra:
-- Precision, Recall, F1-Score (Micro / Macro)
-- Chi tiết cho từng entity type (AGE, DATE, LOCATION, NAME, ORGANIZATION, PATIENT_ID, GENDER, JOB, SYMPTOM, DISEASE)
-- Confusion matrix được lưu tại `src/confusion_matrix_result.png`
-
-#### Bước 4: Dự đoán văn bản mới (CLI Inference)
-Để chạy dự đoán cho câu tiếng Việt tùy ý bằng command line:
-
-```bash
-python src/inference.py --text "Bệnh nhân 1234 (32 tuổi) đang điều trị tại Bệnh viện Chợ Rẫy TP.HCM."
-```
-
-Kết quả:
-```
-[Bệnh_nhân]       -> O
-[1234]           -> PATIENT_ID
-[(32]            -> O
-[tuổi)]          -> AGE
-[đang]           -> O
-[điều_trị]       -> O
-[tại]            -> O
-[Bệnh_viện_Chợ_Rẫy] -> ORGANIZATION
-[TP.HCM]         -> LOCATION
-```
-
----
-
-### 🎯 Model Selection
-
-Ứng dụng web hỗ trợ chọn giữa 2 models:
-
-| Model | Ưu điểm | Nhược điểm |
-|-------|---------|------------|
-| **PhoBERT** | - Tối ưu cho tiếng Việt<br>- F1-score cao hơn trên PhoNER COVID-19<br>- Hiểu ngữ cảnh tiếng Việt tốt<br>- ✅ **Pre-trained weights có sẵn** | - Chỉ hỗ trợ tiếng Việt<br>- Cần fine-tune cho domain mới |
-| **XLM-RoBERTa** | - Multilingual (100+ languages)<br>- Transfer learning tốt<br>- Không cần word segmentation | - F1-score thấp hơn PhoBERT một chút<br>- Chậm hơn do model size lớn hơn<br>- ⚠️ Cần train hoặc tải từ HuggingFace |
-
-💡 **Khuyến nghị:** 
-- Dùng **PhoBERT** cho production với văn bản y tế tiếng Việt (đã có pre-trained weights)
-- Dùng **XLM-RoBERTa** khi cần xử lý văn bản đa ngôn ngữ (cần tự train hoặc tải từ HuggingFace)
-
-
-## 📊 Results And Visualize
-
-### PhoBERT + LoRA + CRF Performance
-- **Test F1-Score:** 93.2% (Micro-averaged)
-- **Best Validation F1:** 94.1%
-- **Training Time:** ~2 hours on RTX 3090
-
-### XLM-RoBERTa Performance
-- **Test F1-Score:** 91.8% (Micro-averaged)
-- **Advantage:** Zero-shot multilingual capability
-
-### Visualization Examples
-
-<img width="480" height="411" alt="Training Curves - PhoBERT" src="https://github.com/user-attachments/assets/109ce496-177c-408b-ac7a-d5fcc5e3d1a3" />
-<img width="480" height="402" alt="Confusion Matrix - PhoBERT" src="https://github.com/user-attachments/assets/27c7b506-2d9c-4a04-8be7-03957f62502f" />
-<img width="720" height="360" alt="F1 Scores Comparison" src="https://github.com/user-attachments/assets/bc8e9a95-fd6d-4825-9ae7-a84614c7f104" />
-<img width="480" height="411" alt="XLM-RoBERTa Training Curves" src="https://github.com/user-attachments/assets/9de9e444-30c8-4521-ba82-d50cd14b6af0" />
-<img width="565" height="365" alt="XLM-RoBERTa Confusion Matrix" src="https://github.com/user-attachments/assets/dba9b7d3-c073-4c18-9f1f-1a13fdb2725f" />
-
----
-
-## 🌟 Entity Types Supported
-
-| Entity | Description | Example |
-|--------|-------------|---------|
-| PATIENT_ID | Mã số bệnh nhân | BN1234, bệnh nhân 5678 |
-| NAME | Tên người | Nguyễn Văn A |
-| AGE | Tuổi | 32 tuổi, 45 tuổi |
-| GENDER | Giới tính | nam, nữ |
-| JOB | Nghề nghiệp | bác sĩ, kỹ sư, tài xế |
-| LOCATION | Địa điểm | Hà Nội, TP.HCM, Đà Nẵng |
-| ORGANIZATION | Tổ chức/Bệnh viện | Bệnh viện Chợ Rẫy, Bộ Y tế |
-| SYMPTOM | Triệu chứng | sốt cao, ho, khó thở |
-| DISEASE | Tên bệnh | COVID-19, viêm phổi, cúm A |
-| DATE | Thời gian | ngày 15/08, 20/3/2024 |
-
----
-
-## 🔗 API Endpoints
-
-### Health Check
-```bash
-GET http://127.0.0.1:8000/api/health
-```
-
-### NER Prediction
 ```bash
 POST http://127.0.0.1:8000/api/predict
 Content-Type: application/json
 
 {
-  "text": "Bệnh nhân 1234 nam 35 tuổi...",
-  "model": "phobert"  // or "xlm-roberta"
+  "text": "Bệnh nhân 1234, 32 tuổi, điều trị tại Bệnh viện Chợ Rẫy.",
+  "model": "phobert"
 }
 ```
 
----
+`GET /api/health` cho biết checkpoint nào đang khả dụng. Khi checkpoint cục bộ chưa có, backend chuyển sang **Smart Demo Mode** dùng luật; kết quả ở chế độ này không phải dự đoán của mô hình neural.
 
-## ❓ Troubleshooting
+## Huấn luyện và đánh giá
 
-### Backend không load được models
-**Triệu chứng:** API health check trả về `"engine": "Smart Demo NER Engine"`
+Dữ liệu mặc định nằm ở `PhoNER_COVID19-main/data/word/` với ba file `train_word.conll`, `dev_word.conll` và `test_word.conll`.
 
-**Nguyên nhân:** Chưa tải models hoặc đặt sai vị trí
+```bash
+# Huấn luyện PhoBERT + LoRA + CRF
+python scripts/train_phobert.py
 
-**Giải pháp:**
-1. Tải models từ [Google Drive](#3--tải-pre-trained-models-khuyên-dùng---bỏ-qua-training)
-2. Đảm bảo file `trained_models/best_phobert_lora.pt` tồn tại
-3. Đảm bảo thư mục `trained_models/phobert-base-v2/` chứa đầy đủ files
-4. Restart backend: `python backend/main.py`
+# Huấn luyện XLM-RoBERTa + LoRA + CRF
+python scripts/train_xlmr.py
+```
 
-### Frontend không kết nối được Backend
-**Triệu chứng:** Loading mãi hoặc lỗi "Failed to fetch"
+Hai script sẽ tải backbone từ Hugging Face nếu chưa có cache, ghi TensorBoard log vào `runs/` và lưu checkpoint vào `trained_models/`. Có thể theo dõi log bằng:
 
-**Giải pháp:**
-1. Kiểm tra Backend đang chạy tại `http://127.0.0.1:8000`
-2. Kiểm tra CORS đã được enable trong `backend/main.py`
-3. Clear browser cache và refresh
+```bash
+tensorboard --logdir runs
+```
 
-### Model chậm khi inference
-**Giải pháp:**
-- Dùng GPU nếu có: Cài đặt PyTorch with CUDA
-- Giảm batch size nếu chạy trên CPU
-- Dùng PhoBERT thay vì XLM-RoBERTa (nhanh hơn)
+Để tái tạo toàn bộ EDA, biểu đồ và phép so sánh được mô tả dưới đây, mở và chạy [model_comparison.ipynb](model_comparison.ipynb). Notebook là nguồn tham chiếu cho các số liệu trong README; kết quả có thể thay đổi theo seed, thiết bị và cấu hình chạy.
 
----
+## Kết quả và trực quan hóa
 
-## 🤝 Contributing
+Notebook lưu một lần chạy 10 epoch cho thấy PhoBERT tốt hơn XLM-R trên test set của lần chạy đó:
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+| Mô hình | Test micro-F1 | Test macro-F1 | Best validation F1 |
+|---|---:|---:|---:|
+| PhoBERT + LoRA + CRF | 0,95 | 0,95 | 0,9596 |
+| XLM-RoBERTa + LoRA + CRF | 0,91 | 0,92 | 0,9220 |
 
----
+Đây là số liệu tái hiện từ output đã lưu trong notebook, không phải khẳng định tổng quát cho mọi cấu hình. Các lớp ít mẫu, điển hình là `JOB`, là nơi chênh lệch giữa các mô hình rõ hơn; vì vậy nên đọc cả F1 theo nhãn thay vì chỉ nhìn micro-F1.
 
-## 📝 License
+<p align="center">
+  <img src="figures/learning_curves.png" alt="Đường cong loss và validation F1 của PhoBERT và XLM-RoBERTa" width="820" />
+</p>
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+<p align="center">
+  <img src="figures/overall_metrics_comparison.png" alt="So sánh micro, macro và weighted F1" width="600" />
+  <img src="figures/model_comparison_f1.png" alt="So sánh F1 theo từng thực thể" width="600" />
+</p>
 
----
+| Hình | Nội dung nên đọc |
+|---|---|
+| [Phân bố độ dài câu](figures/seq_len_dist.png) | Kiểm tra giả định `max_length=128` có bao phủ phần lớn câu hay không. |
+| [Phân bố nhãn](figures/tag_distribution.png) | Nhận biết mất cân bằng lớp và lý do dùng augmentation/F1. |
+| [Learning curves](figures/learning_curves.png) | So sánh train/validation loss và validation F1 theo epoch. |
+| [F1 tổng hợp](figures/overall_metrics_comparison.png) | So sánh micro, macro và weighted F1. |
+| [F1 theo thực thể](figures/model_comparison_f1.png) | Xem mô hình nào mạnh/yếu ở từng loại thực thể. |
+| [Confusion matrix PhoBERT](figures/confusion_matrix_phobert.png) · [XLM-R](figures/confusion_matrix_xlm-roberta.png) | Quan sát nhầm lẫn giữa các nhãn BIO và biên thực thể. |
 
-## 🙏 Acknowledgments
+Ứng dụng web trực quan hóa kết quả suy luận theo bốn dạng: thực thể tô sáng kiểu displaCy, knowledge graph, patient dossier và JSON thô. Các thành phần này giúp kiểm tra span, nhãn, confidence và mối quan hệ trình bày của kết quả; chúng không phải là thước đo đánh giá thay thế cho F1 trên test set.
 
-- [PhoBERT](https://github.com/VinAIResearch/PhoBERT) - VinAI Research
-- [PhoNER_COVID19](https://github.com/VinAIResearch/PhoNER_COVID19) - Dataset
-- [XLM-RoBERTa](https://huggingface.co/xlm-roberta-base) - Facebook AI
-- [LoRA](https://github.com/microsoft/LoRA) - Microsoft Research
+<p align="center">
+  <img src="figures/confusion_matrix_phobert.png" alt="Confusion matrix của PhoBERT" width="430" />
+  <img src="figures/confusion_matrix_xlm-roberta.png" alt="Confusion matrix của XLM-RoBERTa" width="430" />
+</p>
 
----
+<p align="center"><em>Confusion matrix chuẩn hóa theo nhãn BIO của PhoBERT (trái) và XLM-RoBERTa (phải).</em></p>
 
-## 📧 Contact
+## Tài liệu tham khảo
 
-For questions or issues, please open an issue on GitHub or contact the maintainers.
+1. Devlin, J. et al. (2019). *BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding*. NAACL. [Paper](https://aclanthology.org/N19-1423/) · nền tảng Transformer encoder hai chiều và fine-tuning theo tác vụ.
+2. Liu, Y. et al. (2019). *RoBERTa: A Robustly Optimized BERT Pretraining Approach*. [arXiv](https://arxiv.org/abs/1907.11692) · biến thể tối ưu hóa quy trình tiền huấn luyện BERT, là cơ sở kiến trúc của PhoBERT/XLM-R.
+3. Nguyen, D. Q. và Nguyen, A. T. (2020). *PhoBERT: Pre-trained language models for Vietnamese*. Findings of EMNLP. [Paper](https://aclanthology.org/2020.findings-emnlp.92/) · mô hình tiếng Việt được sử dụng trong dự án.
+4. Conneau, A. et al. (2020). *Unsupervised Cross-lingual Representation Learning at Scale*. ACL. [Paper](https://aclanthology.org/2020.acl-main.747/) · XLM-RoBERTa đa ngôn ngữ.
+5. Tjong Kim Sang, E. F. & De Meulder, F. (2003). *Introduction to the CoNLL-2003 Shared Task: Language-Independent Named Entity Recognition*. [Paper](https://aclanthology.org/W03-0419/) · tài liệu nền tảng về thiết lập NER; xem thêm [seqeval](https://github.com/chakki-works/seqeval) để tính precision, recall và F1 cho sequence labeling.
+6. Lafferty, J., McCallum, A. & Pereira, F. (2001). *Conditional Random Fields: Probabilistic Models for Segmenting and Labeling Sequence Data*. ICML. [Paper](https://repository.upenn.edu/entities/publication/a71f1374-4e37-44ad-a123-c1275d94f75a) · nền tảng lý thuyết cho lớp CRF.
+7. Hu, E. J. et al. (2022). *LoRA: Low-Rank Adaptation of Large Language Models*. ICLR. [Paper](https://openreview.net/forum?id=nZeVKeeFYf9) · phương pháp fine-tune hiệu quả tham số.
+8. [PhoNER_COVID19](https://github.com/VinAIResearch/PhoNER_COVID19) · dữ liệu, mô tả và hướng dẫn annotation mà dự án sử dụng.
 
+## Nhóm thực hiện - UET - VNU
+
+- Hoàng Công Khôi — 24022371 
+- Trương Huy Hoàng — 24022341
+- Phạm Danh Thái — 24022449
+
+## License
+
+Mã nguồn được phát hành theo [MIT License](LICENSE). Dữ liệu và các mô hình tiền huấn luyện tuân theo điều khoản của nguồn phát hành tương ứng.
