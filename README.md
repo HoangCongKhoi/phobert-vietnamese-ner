@@ -136,7 +136,7 @@ Bộ tải xuống gồm:
 
 - `best_phobert_lora.pt`: checkpoint PhoBERT + LoRA + CRF đã fine-tune (khoảng 500 MB).
 - `phobert-base-v2/`: PhoBERT base model và tokenizer (khoảng 500 MB), bao gồm `config.json`, `pytorch_model.bin`, `tokenizer.json`, `bpe.codes` và `vocab.txt`.
-- `best_xlmr_lora.pt`: checkpoint XLMR + LoRA đã fine-tune (khoảng 1 GB MB).
+- `best_xlmr_lora.pt`: checkpoint XLMR + LoRA + CRF đã fine-tune (khoảng 1 GB MB).
 - `xlm-roberta/`: XLM-RoBERTa base model và tokenizer (khoảng 18 MB), bao gồm `adapter_config.json`, `adapter_model.safetensors`, `tokenizer.json` và `tokenizer_config.json`.
 
 Tải toàn bộ thư mục `trained_models` (hoặc từng tệp tương ứng) rồi đặt tại thư mục gốc của dự án theo cấu trúc sau:
