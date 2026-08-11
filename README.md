@@ -13,12 +13,10 @@ Ngoài pipeline huấn luyện, repository có ứng dụng demo gồm FastAPI v
 
 - [Bài toán và dữ liệu](#bài-toán-và-dữ-liệu)
 - [Cấu trúc thư mục](#cấu-trúc-thư-mục)
-- [Mô hình và phương pháp](#mô-hình-và-phương-pháp)
 - [Cài đặt và chạy demo](#cài-đặt-và-chạy-demo)
 - [Tải model đã huấn luyện sẵn](#tải-model-đã-huấn-luyện-sẵn)
+- [Khởi chạy ứng dụng web](#khởi-chạy-ứng-dụng-web)
 - [Huấn luyện và đánh giá](#huấn-luyện-và-đánh-giá)
-- [Kết quả và trực quan hóa](#kết-quả-và-trực-quan-hóa)
-- [Tài liệu tham khảo](#tài-liệu-tham-khảo)
 - [Nhóm thực hiện](#nhóm-thực-hiện)
 
 ## Bài toán và dữ liệu
@@ -67,44 +65,6 @@ phobert-vietnamese-ner/
 
 Một số thư mục như `runs/` (TensorBoard) và checkpoint tốt nhất có thể được tạo khi train. Chúng không nhất thiết tồn tại ở bản clone mới.
 
-## Mô hình và phương pháp
-
-### PhoBERT
-
-PhoBERT là mô hình ngôn ngữ tiền huấn luyện dành riêng cho tiếng Việt, dựa trên kiến trúc RoBERTa. Với dữ liệu tiếng Việt đã tách từ, PhoBERT tận dụng tokenizer BPE và biểu diễn ngữ cảnh đã được học từ kho ngữ liệu tiếng Việt lớn. Trong dự án, mỗi từ trong dữ liệu được mã hóa thành một hoặc nhiều subword; chỉ subword đầu tiên nhận nhãn BIO, các subword còn lại được bỏ qua khi tính loss (`-100`).
-
-Đây là lựa chọn phù hợp nhất khi dữ liệu đầu vào chủ yếu là tiếng Việt, vì backbone đã được tối ưu cho đặc điểm từ vựng và ngữ cảnh của tiếng Việt.
-
-### XLM-RoBERTa (XLM-R)
-
-XLM-RoBERTa là phiên bản đa ngôn ngữ của RoBERTa, được tiền huấn luyện trên dữ liệu CommonCrawl của hơn 100 ngôn ngữ. Trong dự án, XLM-R đóng vai trò baseline đa ngôn ngữ: tokenizer SentencePiece ánh xạ token đầu vào sang subword, sau đó nhãn được căn chỉnh bằng `word_ids()` của Hugging Face.
-
-XLM-R phù hợp khi cần một mô hình chung cho nhiều ngôn ngữ hoặc muốn khảo sát khả năng transfer learning. Với bài toán chỉ có tiếng Việt, hiệu năng thực nghiệm hiện tại thấp hơn PhoBERT, nhưng mô hình vẫn là một đối chứng có giá trị.
-
-### LoRA + CRF
-
-Cả hai backbone đều được fine-tune bằng cùng một hướng tiếp cận:
-
-- **LoRA (Low-Rank Adaptation):** chèn các ma trận hạng thấp vào một số lớp attention thay vì cập nhật toàn bộ trọng số backbone. Điều này giảm số tham số cần học và chi phí bộ nhớ.
-- **Dropout + linear classifier:** biến embedding theo từng token thành điểm phát xạ cho các nhãn BIO.
-- **CRF (Conditional Random Field):** học xác suất chuyển tiếp giữa các nhãn trong chuỗi, giúp hạn chế các chuỗi không hợp lệ như `O → I-LOCATION` mà không có `B-LOCATION` trước đó.
-- **Data augmentation:** script có thể sinh thêm mẫu bằng cách hoán đổi thực thể thuộc lớp hiếm, mặc định nhắm tới `JOB`.
-
-Các siêu tham số chính trong script: 10 epoch, batch size 16, `max_length=128`, LoRA rank 16, alpha 32, dropout 0,1 và warmup 10%. Hãy xem `model_comparison.ipynb` hoặc báo cáo dự án để biết phân tích đầy đủ.
-
-<p align="center">
-  <img src="figures/architecture.png" alt="Kiến trúc PhoBERT/XLM-RoBERTa kết hợp LoRA và CRF" width="760" />
-</p>
-
-<p align="center"><em>Kiến trúc tổng quan: backbone Transformer → LoRA → token classifier → CRF.</em></p>
-
-| Tiêu chí | PhoBERT-base-v2 | XLM-RoBERTa-base |
-|---|---|---|
-| Phạm vi ngôn ngữ | Tiếng Việt | Đa ngôn ngữ |
-| Tokenizer | BPE, phù hợp dữ liệu đã tách từ tiếng Việt | SentencePiece |
-| Vai trò trong dự án | Mô hình ưu tiên cho tiếng Việt | Baseline/tuỳ chọn đa ngôn ngữ |
-| Căn chỉnh nhãn | Thủ công theo subword | Qua `word_ids()` |
-
 ## Cài đặt và chạy demo
 
 ### Yêu cầu
@@ -134,9 +94,9 @@ Nếu chỉ muốn test hoặc demo mà không có thời gian huấn luyện, h
 
 Bộ tải xuống gồm:
 
-- `best_phobert_lora.pt`: checkpoint PhoBERT + LoRA + CRF đã fine-tune (khoảng 500 MB).
-- `phobert-base-v2/`: PhoBERT base model và tokenizer (khoảng 500 MB), bao gồm `config.json`, `pytorch_model.bin`, `tokenizer.json`, `bpe.codes` và `vocab.txt`.
-- `best_xlmr_lora.pt`: checkpoint XLMR + LoRA + CRF đã fine-tune (khoảng 1 GB MB).
+- `best_phobert_lora.pt`: checkpoint PhoBERT + LoRA + CRF đã fine-tune (khoảng 546 MB).
+- `phobert-base-v2/`: PhoBERT base model và tokenizer (khoảng 521 MB), bao gồm `config.json`, `pytorch_model.bin`, `tokenizer.json`, `bpe.codes` và `vocab.txt`.
+- `best_xlmr_lora.pt`: checkpoint XLMR + LoRA + CRF đã fine-tune (khoảng 1.04 GB).
 - `xlm-roberta/`: XLM-RoBERTa base model và tokenizer (khoảng 18 MB), bao gồm `adapter_config.json`, `adapter_model.safetensors`, `tokenizer.json` và `tokenizer_config.json`.
 
 Tải toàn bộ thư mục `trained_models` (hoặc từng tệp tương ứng) rồi đặt tại thư mục gốc của dự án theo cấu trúc sau:
@@ -220,56 +180,7 @@ Hai script sẽ tải backbone từ Hugging Face nếu chưa có cache, ghi Tens
 tensorboard --logdir runs
 ```
 
-Để tái tạo toàn bộ EDA, biểu đồ và phép so sánh được mô tả dưới đây, mở và chạy [model_comparison.ipynb](model_comparison.ipynb). Notebook là nguồn tham chiếu cho các số liệu trong README; kết quả có thể thay đổi theo seed, thiết bị và cấu hình chạy.
-
-## Kết quả và trực quan hóa
-
-Notebook lưu một lần chạy 10 epoch cho thấy PhoBERT tốt hơn XLM-R trên test set của lần chạy đó:
-
-| Mô hình | Test micro-F1 | Test macro-F1 | Best validation F1 |
-|---|---:|---:|---:|
-| PhoBERT + LoRA + CRF | 0,95 | 0,95 | 0,9596 |
-| XLM-RoBERTa + LoRA + CRF | 0,91 | 0,92 | 0,9220 |
-
-Đây là số liệu tái hiện từ output đã lưu trong notebook, không phải khẳng định tổng quát cho mọi cấu hình. Các lớp ít mẫu, điển hình là `JOB`, là nơi chênh lệch giữa các mô hình rõ hơn; vì vậy nên đọc cả F1 theo nhãn thay vì chỉ nhìn micro-F1.
-
-<p align="center">
-  <img src="figures/learning_curves.png" alt="Đường cong loss và validation F1 của PhoBERT và XLM-RoBERTa" width="820" />
-</p>
-
-<p align="center">
-  <img src="figures/overall_metrics_comparison.png" alt="So sánh micro, macro và weighted F1" width="600" />
-  <img src="figures/model_comparison_f1.png" alt="So sánh F1 theo từng thực thể" width="600" />
-</p>
-
-| Hình | Nội dung nên đọc |
-|---|---|
-| [Phân bố độ dài câu](figures/seq_len_dist.png) | Kiểm tra giả định `max_length=128` có bao phủ phần lớn câu hay không. |
-| [Phân bố nhãn](figures/tag_distribution.png) | Nhận biết mất cân bằng lớp và lý do dùng augmentation/F1. |
-| [Learning curves](figures/learning_curves.png) | So sánh train/validation loss và validation F1 theo epoch. |
-| [F1 tổng hợp](figures/overall_metrics_comparison.png) | So sánh micro, macro và weighted F1. |
-| [F1 theo thực thể](figures/model_comparison_f1.png) | Xem mô hình nào mạnh/yếu ở từng loại thực thể. |
-| [Confusion matrix PhoBERT](figures/confusion_matrix_phobert.png) · [XLM-R](figures/confusion_matrix_xlm-roberta.png) | Quan sát nhầm lẫn giữa các nhãn BIO và biên thực thể. |
-
-Ứng dụng web trực quan hóa kết quả suy luận theo bốn dạng: thực thể tô sáng kiểu displaCy, knowledge graph, patient dossier và JSON thô. Các thành phần này giúp kiểm tra span, nhãn, confidence và mối quan hệ trình bày của kết quả; chúng không phải là thước đo đánh giá thay thế cho F1 trên test set.
-
-<p align="center">
-  <img src="figures/confusion_matrix_phobert.png" alt="Confusion matrix của PhoBERT" width="430" />
-  <img src="figures/confusion_matrix_xlm-roberta.png" alt="Confusion matrix của XLM-RoBERTa" width="430" />
-</p>
-
-<p align="center"><em>Confusion matrix chuẩn hóa theo nhãn BIO của PhoBERT (trái) và XLM-RoBERTa (phải).</em></p>
-
-## Tài liệu tham khảo
-
-1. Devlin, J. et al. (2019). *BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding*. NAACL. [Paper](https://aclanthology.org/N19-1423/) · nền tảng Transformer encoder hai chiều và fine-tuning theo tác vụ.
-2. Liu, Y. et al. (2019). *RoBERTa: A Robustly Optimized BERT Pretraining Approach*. [arXiv](https://arxiv.org/abs/1907.11692) · biến thể tối ưu hóa quy trình tiền huấn luyện BERT, là cơ sở kiến trúc của PhoBERT/XLM-R.
-3. Nguyen, D. Q. và Nguyen, A. T. (2020). *PhoBERT: Pre-trained language models for Vietnamese*. Findings of EMNLP. [Paper](https://aclanthology.org/2020.findings-emnlp.92/) · mô hình tiếng Việt được sử dụng trong dự án.
-4. Conneau, A. et al. (2020). *Unsupervised Cross-lingual Representation Learning at Scale*. ACL. [Paper](https://aclanthology.org/2020.acl-main.747/) · XLM-RoBERTa đa ngôn ngữ.
-5. Tjong Kim Sang, E. F. & De Meulder, F. (2003). *Introduction to the CoNLL-2003 Shared Task: Language-Independent Named Entity Recognition*. [Paper](https://aclanthology.org/W03-0419/) · tài liệu nền tảng về thiết lập NER; xem thêm [seqeval](https://github.com/chakki-works/seqeval) để tính precision, recall và F1 cho sequence labeling.
-6. Lafferty, J., McCallum, A. & Pereira, F. (2001). *Conditional Random Fields: Probabilistic Models for Segmenting and Labeling Sequence Data*. ICML. [Paper](https://repository.upenn.edu/entities/publication/a71f1374-4e37-44ad-a123-c1275d94f75a) · nền tảng lý thuyết cho lớp CRF.
-7. Hu, E. J. et al. (2022). *LoRA: Low-Rank Adaptation of Large Language Models*. ICLR. [Paper](https://openreview.net/forum?id=nZeVKeeFYf9) · phương pháp fine-tune hiệu quả tham số.
-8. [PhoNER_COVID19](https://github.com/VinAIResearch/PhoNER_COVID19) · dữ liệu, mô tả và hướng dẫn annotation mà dự án sử dụng.
+Để xem chi tiết phân tích phân phối dữ liệu (EDA) và trực quan hóa kết quả (Confusion Matrix, F1 Score theo từng thực thể), sử dụng file [model_comparison.ipynb](model_comparison.ipynb).
 
 ## Nhóm thực hiện - UET - VNU
 
