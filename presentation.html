@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhoBERT & XLM-RoBERTa — NER Tiếng Việt COVID-19 | Thuyết Trình</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --brand: #2563EB;
+      --brand-light: #DBEAFE;
+      --accent: #059669;
+      --accent-light: #D1FAE5;
+      --warn: #D97706;
+      --warn-light: #FEF3C7;
+      --danger: #DC2626;
+      --ink: #1e293b;
+      --muted: #64748b;
+      --surface: #f8fafc;
+      --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --gradient-2: linear-gradient(135deg, #2563EB 0%, #059669 100%);
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    .reveal {
+      font-family: 'Inter', -apple-system, sans-serif;
+      color: var(--ink);
+      font-size: 21px;
+    }
+
+    .reveal h1,
+    .reveal h2,
+    .reveal h3 {
+      font-family: 'Inter', sans-serif;
+      font-weight: 800;
+      text-transform: none;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+
+    .reveal h1 {
+      font-size: 2.4em;
+    }
+
+    .reveal h2 {
+      font-size: 1.45em;
+      margin-bottom: 0.5em;
+      padding-bottom: 0.3em;
+      border-bottom: 2px solid var(--brand-light);
+    }
+
+    .reveal h3 {
+      font-size: 1.1em;
+      font-weight: 700;
+    }
+
+    .reveal .slides {
+      text-align: left;
+    }
+
+    /* Fixed full height for all slides to eliminate bottom gap */
+    .reveal .slides>section {
+      height: 720px !important;
+      min-height: 720px !important;
+      max-height: 720px !important;
+      top: 0 !important;
+      left: 0 !important;
+      padding: 34px 54px !important;
+      box-sizing: border-box !important;
+      overflow: hidden;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: flex-start !important;
+    }
+
+    /* Cover slide centered perfectly */
+    .reveal .slides>section.cover-slide {
+      justify-content: center !important;
+      align-items: center !important;
+      text-align: center !important;
+      padding: 40px !important;
+    }
+
+    .cover-slide h2 {
+      border-bottom: none;
+    }
+
+    .cover-slide h1 {
+      background: var(--gradient-2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 2.5em;
+      line-height: 1.25;
+      margin: 0.25em 0 0.35em 0;
+    }
+
+    .cover-subtitle {
+      font-size: 1.1em;
+      color: var(--muted);
+      margin-bottom: 1.8em;
+      font-weight: 500;
+    }
+
+    .cover-team {
+      display: flex;
+      gap: 36px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 1.8em;
+    }
+
+    .cover-member {
+      background: var(--surface);
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px 28px;
+      font-size: 0.92em;
+      line-height: 1.5;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .cover-member strong {
+      color: var(--brand);
+    }
+
+    .cover-school {
+      font-size: 0.95em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 0.78em;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    .badge-blue {
+      background: var(--brand-light);
+      color: var(--brand);
+    }
+
+    .badge-green {
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+
+    .badge-amber {
+      background: var(--warn-light);
+      color: var(--warn);
+    }
+
+    .badge-red {
+      background: #FEE2E2;
+      color: var(--danger);
+    }
+
+    .badge-purple {
+      background: #EDE9FE;
+      color: #7C3AED;
+    }
+
+    /* Card */
+    .card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin: 8px 0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .card-gradient {
+      background: var(--gradient-1);
+      color: white;
+      border: none;
+    }
+
+    .card-row {
+      display: flex;
+      gap: 16px;
+      margin: 10px 0;
+    }
+
+    .card-row>.card {
+      flex: 1;
+      margin: 0;
+    }
+
+    /* Tables */
+    .reveal table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8em;
+      margin: 8px 0;
+    }
+
+    .reveal table thead th {
+      background: var(--brand);
+      color: white;
+      padding: 7px 12px;
+      font-weight: 600;
+      text-align: left;
+    }
+
+    .reveal table thead th:first-child {
+      border-radius: 8px 0 0 0;
+    }
+
+    .reveal table thead th:last-child {
+      border-radius: 0 8px 0 0;
+    }
+
+    .reveal table tbody td {
+      padding: 6px 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .reveal table tbody tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    /* Code */
+    .reveal code {
+      font-family: 'JetBrains Mono', monospace;
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.82em;
+      color: #7C3AED;
+    }
+
+    /* Lists */
+    .reveal ul,
+    .reveal ol {
+      margin-left: 0;
+      padding-left: 1.2em;
+      line-height: 1.7;
+    }
+
+    .reveal li {
+      margin-bottom: 0.3em;
+    }
+
+    .reveal li::marker {
+      color: var(--brand);
+      font-weight: 700;
+    }
+
+    /* Image container */
+    .img-container {
+      text-align: center;
+      margin: 8px 0;
+    }
+
+    .img-container img {
+      border-radius: 10px;
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.09);
+      border: 1px solid #e2e8f0;
+    }
+
+    .img-caption {
+      font-size: 0.74em;
+      color: var(--muted);
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    /* Metric boxes */
+    .metric-row {
+      display: flex;
+      gap: 16px;
+      margin: 14px 0;
+    }
+
+    .metric-box {
+      flex: 1;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 18px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .metric-box .metric-value {
+      font-size: 2em;
+      font-weight: 800;
+      color: var(--brand);
+      line-height: 1.1;
+    }
+
+    .metric-box .metric-label {
+      font-size: 0.72em;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 4px;
+    }
+
+    .metric-box.green .metric-value {
+      color: var(--accent);
+    }
+
+    .metric-box.amber .metric-value {
+      color: var(--warn);
+    }
+
+    /* Two column layout */
+    .two-col {
+      display: flex;
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    .two-col>* {
+      flex: 1;
+    }
+
+    /* Flow diagram */
+    .flow-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 14px 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .flow-box {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px 18px;
+      text-align: center;
+      font-size: 0.82em;
+      font-weight: 600;
+      min-width: 105px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .flow-box.blue {
+      border-color: var(--brand);
+      background: var(--brand-light);
+    }
+
+    .flow-box.green {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    .flow-box.purple {
+      border-color: #7C3AED;
+      background: #EDE9FE;
+    }
+
+    .flow-box.amber {
+      border-color: var(--warn);
+      background: var(--warn-light);
+    }
+
+    .flow-arrow {
+      font-size: 1.4em;
+      color: var(--brand);
+      font-weight: 700;
+    }
+
+    /* Slide number */
+    .reveal .slide-number {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      background: var(--brand);
+      color: white;
+      border-radius: 6px;
+      padding: 3px 8px;
+    }
+
+    /* Conclusion check items */
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 8px 0;
+      font-size: 0.9em;
+      line-height: 1.5;
+    }
+
+    .check-icon {
+      width: 22px;
+      height: 22px;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      flex-shrink: 0;
+      font-size: 0.72em;
+      margin-top: 2px;
+    }
+
+    .warn-icon {
+      background: var(--warn);
+    }
+
+    .future-icon {
+      background: var(--brand);
+    }
+
+    /* NER example */
+    .ner-example {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 20px;
+      font-size: 0.95em;
+      line-height: 2.1;
+      margin: 14px 0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .ner-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 5px;
+      font-size: 0.72em;
+      font-weight: 700;
+      margin-left: 4px;
+      vertical-align: middle;
+      text-transform: uppercase;
+    }
+
+    .ner-entity {
+      display: inline;
+      padding: 3px 6px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    /* Controls & progress */
+    .reveal .controls {
+      color: var(--brand);
+    }
+
+    .reveal .progress span {
+      background: var(--brand);
+    }
+
+    /* TOC grid */
+    .toc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .toc-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: var(--surface);
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      font-size: 0.9em;
+      font-weight: 500;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .toc-num {
+      width: 30px;
+      height: 30px;
+      background: var(--brand);
+      color: white;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.82em;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- ═══════════ SLIDE 1: COVER ═══════════ -->
+      <section class="cover-slide">
+        <div>
+          <span class="badge badge-blue" style="font-size: 0.92em;">Đồ án môn học — Xử lý Ngôn ngữ Tự nhiên (NLP)</span>
+        </div>
+        <h1>PhoBERT & XLM-RoBERTa<br>cho NER Tiếng Việt<br>trong Ngữ Cảnh COVID-19</h1>
+        <p class="cover-subtitle">Fine-tuning với LoRA + CRF trên bộ dữ liệu PhoNER_COVID19</p>
+        <div class="cover-team">
+          <div class="cover-member"><strong>Hoàng Công Khôi</strong><br>24022371</div>
+          <div class="cover-member"><strong>Trương Huy Hoàng</strong><br>24022341</div>
+          <div class="cover-member"><strong>Phạm Danh Thái</strong><br>24022449</div>
+        </div>
+        <p class="cover-school">Trường Đại học Công nghệ — Đại học Quốc gia Hà Nội (UET — VNU)</p>
+      </section>
+
+      <!-- ═══════════ SLIDE 2: MỤC LỤC ═══════════ -->
+      <section>
+        <h2>Mục Lục Thuyết Trình</h2>
+        <div class="toc-grid">
+          <div class="toc-item"><span class="toc-num">1</span> Giới thiệu bài toán & Động lực</div>
+          <div class="toc-item"><span class="toc-num">2</span> Cơ sở lý thuyết (Transformer, LoRA, CRF)</div>
+          <div class="toc-item"><span class="toc-num">3</span> Bộ dữ liệu PhoNER_COVID19</div>
+          <div class="toc-item"><span class="toc-num">4</span> Phân tích dữ liệu (EDA)</div>
+          <div class="toc-item"><span class="toc-num">5</span> Data Augmentation</div>
+          <div class="toc-item"><span class="toc-num">6</span> Kiến trúc mô hình</div>
+          <div class="toc-item"><span class="toc-num">7</span> Pipeline huấn luyện</div>
+          <div class="toc-item"><span class="toc-num">8</span> Kết quả thực nghiệm</div>
+          <div class="toc-item"><span class="toc-num">9</span> Demo ứng dụng web</div>
+          <div class="toc-item"><span class="toc-num">10</span> Kết luận & Hướng phát triển</div>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 3: BÀI TOÁN NER ═══════════ -->
+      <section>
+        <h2>Bài Toán Named Entity Recognition (NER)</h2>
+        <div class="card" style="padding: 16px 22px; margin-top: 6px;">
+          <h3 style="font-size: 1.1em; margin-bottom: 6px;">Khái niệm & Bản chất bài toán</h3>
+          <p style="font-size: 0.9em; line-height: 1.6; margin: 0;">
+            <strong>Named Entity Recognition (NER)</strong> là bài toán <strong>Sequence Labeling</strong> nhằm phát
+            hiện và phân loại các thực thể định danh trong văn bản y tế (Tên, Tuổi, Địa điểm, Bệnh viện, Triệu chứng,
+            v.v.).
+          </p>
+        </div>
+
+        <div class="ner-example" style="margin: 12px 0; padding: 14px 18px;">
+          <div style="margin-bottom: 8px;">
+            <span class="ner-entity" style="background:#DBEAFE; border: 1px solid #93C5FD;">Bệnh nhân 1234<span
+                class="ner-tag" style="background:#2563EB; color:white;">PATIENT_ID</span></span>
+            ,
+            <span class="ner-entity" style="background:#FEF3C7; border: 1px solid #FDE68A;">32 tuổi<span class="ner-tag"
+                style="background:#D97706; color:white;">AGE</span></span>
+            , điều trị tại
+            <span class="ner-entity" style="background:#CFFAFE; border: 1px solid #67E8F9;">Bệnh viện Chợ Rẫy<span
+                class="ner-tag" style="background:#0891B2; color:white;">ORGANIZATION</span></span>
+            ngày
+            <span class="ner-entity" style="background:#E0E7FF; border: 1px solid #A5B4FC;">15/08<span class="ner-tag"
+                style="background:#4F46E5; color:white;">DATE</span></span>
+          </div>
+          <div
+            style="font-size: 0.76em; color: var(--muted); border-top: 1px dashed #cbd5e1; padding-top: 6px; font-family: 'JetBrains Mono', monospace;">
+            BIO Tags: [B-PATIENT_ID, I-PATIENT_ID, O, B-AGE, I-AGE, O, O, O, B-ORGANIZATION, I-ORGANIZATION,
+            I-ORGANIZATION, O, B-DATE]
+          </div>
+        </div>
+
+        <div class="card-row" style="margin-top: 12px;">
+          <div class="card" style="padding: 16px 18px;">
+            <strong style="color:var(--brand); font-size: 1.05em;">Hồ Sơ Y Tế</strong>
+            <ul style="font-size: 0.82em; margin-top: 6px; line-height: 1.6; padding-left: 1.1em;">
+              <li>Tự động trích xuất thông tin ca bệnh</li>
+              <li>Chuẩn hóa dữ liệu bệnh án điện tử</li>
+            </ul>
+          </div>
+          <div class="card" style="padding: 16px 18px;">
+            <strong style="color:var(--accent); font-size: 1.05em;">Knowledge Graph</strong>
+            <ul style="font-size: 0.82em; margin-top: 6px; line-height: 1.6; padding-left: 1.1em;">
+              <li>Liên kết bệnh nhân - địa điểm - lịch trình</li>
+              <li>Phân tích mạng lưới lây nhiễm</li>
+            </ul>
+          </div>
+          <div class="card" style="padding: 16px 18px;">
+            <strong style="color:var(--warn); font-size: 1.05em;">Giám Sát Dịch Tễ</strong>
+            <ul style="font-size: 0.82em; margin-top: 6px; line-height: 1.6; padding-left: 1.1em;">
+              <li>Theo dõi các ổ dịch và điểm nóng</li>
+              <li>Hỗ trợ ra quyết định phòng chống dịch</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 4: ĐỘNG LỰC ═══════════ -->
+      <section>
+        <h2>Động Lực & Mục Tiêu Nghiên Cứu</h2>
+
+        <div class="two-col" style="margin-top: 6px;">
+          <div>
+            <div class="card" style="padding: 18px 22px; min-height: 270px;">
+              <h3 style="font-size: 1.1em; margin-bottom: 8px; color: var(--brand);">Bối cảnh & Thách thức</h3>
+              <ul style="font-size: 0.86em; line-height: 1.75; padding-left: 1.1em;">
+                <li>Bùng nổ <strong>văn bản y tế & dịch tễ</strong> tiếng Việt trong đại dịch.</li>
+                <li>Đặc thù tiếng Việt: từ ghép đa âm tiết, từ viết tắt y khoa (BN, BV, F0...).</li>
+                <li>Mất cân bằng dữ liệu nghiêm trọng giữa các loại thực thể.</li>
+                <li>Nhu cầu trích xuất thông tin <strong>chính xác & tự động theo thời gian thực</strong>.</li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <div class="card" style="padding: 18px 22px; min-height: 270px;">
+              <h3 style="font-size: 1.1em; margin-bottom: 8px; color: var(--accent);">Mục tiêu & Đóng góp</h3>
+              <ol style="font-size: 0.86em; line-height: 1.75; padding-left: 1.1em;">
+                <li>Xây dựng pipeline <strong>PhoBERT + LoRA + CRF</strong> tối ưu tham số.</li>
+                <li>Thực nghiệm so sánh đa diện với <strong>XLM-RoBERTa</strong>.</li>
+                <li>Ứng dụng kỹ thuật <strong>Data Augmentation</strong> cho thực thể hiếm.</li>
+                <li>Phát triển hệ thống <strong>Full-stack Web Demo</strong> phục vụ trực quan hóa.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <div class="metric-row" style="margin-top: 14px;">
+          <div class="metric-box" style="padding: 12px 14px;">
+            <div class="metric-value" style="font-size: 1.9em;">2</div>
+            <div class="metric-label" style="font-size: 0.72em;">Mô hình so sánh</div>
+          </div>
+          <div class="metric-box green" style="padding: 12px 14px;">
+            <div class="metric-value" style="font-size: 1.9em;">10</div>
+            <div class="metric-label" style="font-size: 0.72em;">Loại thực thể</div>
+          </div>
+          <div class="metric-box amber" style="padding: 12px 14px;">
+            <div class="metric-value" style="font-size: 1.9em;">35K+</div>
+            <div class="metric-label" style="font-size: 0.72em;">Thực thể gán nhãn</div>
+          </div>
+          <div class="metric-box" style="padding: 12px 14px;">
+            <div class="metric-value" style="font-size: 1.9em;">10K+</div>
+            <div class="metric-label" style="font-size: 0.72em;">Câu trong dataset</div>
+          </div>
+        </div>
+
+        <div
+          style="background: var(--surface); border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; margin-top: 10px; font-size: 0.8em; color: var(--muted); text-align: center;">
+          Trọng tâm: Kết hợp mô hình ngôn ngữ chuyên sâu cho tiếng Việt với LoRA (PEFT) và lớp giải mã cấu trúc CRF.
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 5: CƠ SỞ LÝ THUYẾT — TRANSFORMER ═══════════ -->
+      <section>
+        <h2>Cơ Sở Lý Thuyết — Pre-trained Language Models</h2>
+
+        <div class="card-row" style="margin-top: 10px;">
+          <div class="card" style="padding: 22px 24px; min-height: 260px;">
+            <h3 style="color:var(--brand); font-size: 1.15em;">PhoBERT</h3>
+            <span class="badge badge-blue" style="margin-bottom: 10px;">Chuyên tiếng Việt</span>
+            <ul style="font-size:0.88em; margin-top: 10px; line-height: 1.75;">
+              <li><strong>VinAI, 2020</strong> — Pre-train trên <strong>20GB</strong> corpus tiếng Việt</li>
+              <li>Tokenizer: <strong>BPE</strong> (word-level)</li>
+              <li>Hiểu ngữ nghĩa tiếng Việt tốt hơn multilingual</li>
+              <li>Phiên bản: <code>phobert-base-v2</code></li>
+            </ul>
+          </div>
+          <div class="card" style="padding: 22px 24px; min-height: 260px;">
+            <h3 style="color:var(--accent); font-size: 1.15em;">XLM-RoBERTa</h3>
+            <span class="badge badge-green" style="margin-bottom: 10px;">Đa ngôn ngữ</span>
+            <ul style="font-size:0.88em; margin-top: 10px; line-height: 1.75;">
+              <li><strong>Conneau et al., 2020</strong> — Pre-train trên <strong>2.5TB</strong> dữ liệu</li>
+              <li><strong>100 ngôn ngữ</strong> bao gồm tiếng Việt</li>
+              <li>Tokenizer: <strong>SentencePiece</strong></li>
+              <li>Ưu điểm: chuyển giao đa ngôn ngữ</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 16px; padding: 20px 24px;">
+          <h3 style="font-size: 1.1em; margin-bottom: 8px;">Transformer Encoder</h3>
+          <p style="font-size: 0.88em; margin: 0; line-height: 1.65;">
+            Cả hai dựa trên <strong>Transformer encoder</strong> (Vaswani et al., 2017): cơ chế
+            <strong>Self-Attention</strong> cho phép mỗi token "nhìn" toàn bộ câu, học biểu diễn ngữ cảnh sâu.
+            <strong>BERT</strong> (Devlin et al., 2019): Pre-train bằng Masked Language Modeling (MLM).
+          </p>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 6: LoRA & CRF ═══════════ -->
+      <section>
+        <h2>Cơ Sở Lý Thuyết — LoRA & CRF</h2>
+
+        <div class="two-col" style="margin-top: 10px;">
+          <div>
+            <div class="card" style="padding: 22px 24px; min-height: 285px;">
+              <h3 style="font-size: 1.15em; margin-bottom: 8px;">LoRA — Low-Rank Adaptation</h3>
+              <span class="badge badge-purple">Hu et al., ICLR 2022</span>
+              <ul style="font-size:0.86em; margin-top: 12px; line-height: 1.75;">
+                <li>Chèn <strong>ma trận rank thấp</strong> vào attention layers</li>
+                <li>Đóng băng toàn bộ backbone → chỉ train adapter</li>
+                <li><strong>Giảm ~96%</strong> tham số cần huấn luyện</li>
+                <li>Cấu hình: <code>r=16</code>, <code>alpha=32</code></li>
+                <li>Target modules: <code>query, key, value, dense</code></li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <div class="card" style="padding: 22px 24px; min-height: 285px;">
+              <h3 style="font-size: 1.15em; margin-bottom: 8px;">CRF — Conditional Random Field</h3>
+              <span class="badge badge-green">Lafferty et al., 2001</span>
+              <ul style="font-size:0.86em; margin-top: 12px; line-height: 1.75;">
+                <li>Lớp giải mã chuỗi <strong>có ràng buộc BIO</strong></li>
+                <li>Ràng buộc: <code>I-LOC</code> ≠ sau <code>B-PER</code></li>
+                <li>Tối ưu <strong>log-likelihood toàn chuỗi</strong></li>
+                <li>Viterbi decoding → tìm đường đi tốt nhất</li>
+                <li>Cải thiện consistency so với softmax độc lập</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="flow-row" style="margin-top: 22px;">
+          <div class="flow-box blue">Transformer<br><small>Biểu diễn ngữ cảnh</small></div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box purple">LoRA<br><small>Hiệu quả tham số</small></div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box green">CRF<br><small>Giải mã có ràng buộc</small></div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box amber">NER Output<br><small>Thực thể gán nhãn</small></div>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 7: BỘ DỮ LIỆU ═══════════ -->
+      <section>
+        <h2>Bộ Dữ Liệu PhoNER_COVID19</h2>
+
+        <div class="card" style="margin-bottom: 8px; padding: 12px 18px;">
+          <span class="badge badge-blue">NAACL 2021</span>
+          <span class="badge badge-green" style="margin-left: 6px;">VinAI Research</span>
+          <span style="font-size:0.85em; margin-left: 10px;">Truong, Dao & Nguyen — ~35K thực thể / ~10K câu — Định dạng
+            CoNLL</span>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Thực thể</th>
+              <th>Ý nghĩa</th>
+              <th>Ví dụ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-blue">PATIENT_ID</span></td>
+              <td>Mã bệnh nhân</td>
+              <td>BN 1234</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">NAME</span></td>
+              <td>Tên người</td>
+              <td>Nguyễn Văn A</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-amber">AGE</span></td>
+              <td>Tuổi</td>
+              <td>35 tuổi</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-purple">GENDER</span></td>
+              <td>Giới tính</td>
+              <td>nam, nữ</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-red">LOCATION</span></td>
+              <td>Địa điểm</td>
+              <td>Hà Nội</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">ORGANIZATION</span></td>
+              <td>Tổ chức / Bệnh viện</td>
+              <td>Bệnh viện Bạch Mai</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-purple">DATE</span></td>
+              <td>Thời gian</td>
+              <td>ngày 15/08</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-amber">JOB</span></td>
+              <td>Nghề nghiệp</td>
+              <td>tài xế</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-red">SYMPTOM_AND_DISEASE</span></td>
+              <td>Triệu chứng & Bệnh</td>
+              <td>sốt cao, COVID-19</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">TRANSPORTATION</span></td>
+              <td>Phương tiện</td>
+              <td>chuyến bay VN123</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p style="font-size:0.76em; color:var(--muted); margin: 4px 0 0 0;">Quy ước BIO: <code>B-</code> (Begin),
+          <code>I-</code> (Inside), <code>O</code> (Outside) → 10 entity × 2 + 1 = <strong>21 nhãn</strong>
+        </p>
+      </section>
+
+      <!-- ═══════════ SLIDE 8: EDA — PHÂN BỐ NHÃN ═══════════ -->
+      <section>
+        <h2>EDA — Phân Bố Nhãn NER (Tập Train)</h2>
+
+        <div class="img-container">
+          <img src="figures/tag_distribution.png" alt="Tag Distribution" style="max-height: 290px;">
+        </div>
+
+        <div class="card-row" style="margin-top: 14px;">
+          <div class="card" style="text-align:center; padding: 16px 14px;">
+            <strong style="color:var(--accent); font-size: 1.05em;">LOCATION</strong><br>
+            <span style="font-size:0.85em; display: inline-block; margin-top: 4px;">~6000+ mẫu — Chiếm ưu thế</span>
+          </div>
+          <div class="card" style="text-align:center; padding: 16px 14px;">
+            <strong style="color:var(--warn); font-size: 1.05em;">JOB</strong><br>
+            <span style="font-size:0.85em; display: inline-block; margin-top: 4px;">~100 mẫu — Rất ít (long-tail)</span>
+          </div>
+          <div class="card" style="text-align:center; padding: 16px 14px;">
+            <strong style="color:var(--danger); font-size: 1.05em;">Hệ quả</strong><br>
+            <span style="font-size:0.85em; display: inline-block; margin-top: 4px;">Cần Augmentation + đánh giá bằng
+              F1</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 9: EDA — PHÂN BỐ ĐỘ DÀI ═══════════ -->
+      <section>
+        <h2>EDA — Phân Bố Độ Dài Câu</h2>
+
+        <div class="img-container">
+          <img src="figures/seq_len_dist.png" alt="Sequence Length Distribution" style="max-height: 280px;">
+        </div>
+
+        <div class="card" style="margin-top: 12px; padding: 18px 22px;">
+          <h3 style="font-size: 1.1em; margin-bottom: 8px;">Nhận xét</h3>
+          <ul style="font-size: 0.88em; line-height: 1.7;">
+            <li>Đa số câu có <strong>15–35 tokens</strong></li>
+            <li>Phân phối <strong>lệch phải</strong> (right-skewed), đuôi dài tới ~160 tokens</li>
+            <li>Lựa chọn <code>MAX_LENGTH = 128</code> → bao phủ <strong>> 95% câu</strong></li>
+            <li>Cắt bỏ (truncation) chỉ ảnh hưởng rất ít mẫu ngoại lệ</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 10: DATA AUGMENTATION ═══════════ -->
+      <section>
+        <h2>Tăng Cường Dữ Liệu — Entity Swap Augmentation</h2>
+
+        <div class="two-col" style="margin-top: 6px;">
+          <div>
+            <div class="card" style="padding: 16px 20px;">
+              <h3 style="font-size: 1.05em; margin-bottom: 6px; color: var(--danger);">Vấn đề mất cân bằng</h3>
+              <p style="font-size: 0.85em; line-height: 1.6; margin: 0;">
+                Nhãn <strong>JOB</strong> chỉ có ~100 mẫu B-JOB (~1.4%) và ~50 mẫu I-JOB, khiến mô hình khó học đặc
+                trưng và dễ bỏ sót (False Negative).
+              </p>
+            </div>
+
+            <div class="card" style="margin-top: 10px; padding: 16px 20px;">
+              <h3 style="font-size: 1.05em; margin-bottom: 6px; color: var(--accent);">Quy trình Entity Swap</h3>
+              <ul style="font-size: 0.84em; line-height: 1.65; margin: 0; padding-left: 1.1em;">
+                <li>Nhận diện thực thể <code>JOB</code> trong câu huấn luyện.</li>
+                <li>Thay thế bằng nghề <strong>ngẫu nhiên</strong> từ từ điển nghiệp vụ.</li>
+                <li>Bảo toàn nhãn BIO và cấu trúc ngữ pháp nguyên bản.</li>
+                <li>Nhân bản <code>num_augments = 3</code> câu mới cho mỗi câu gốc.</li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <div class="card" style="padding: 16px 20px; min-height: 250px;">
+              <h3 style="font-size: 1.05em; margin-bottom: 8px; color: var(--brand);">Từ điển nghề nghiệp y tế (16 mẫu)
+              </h3>
+              <div style="font-size: 0.82em; columns: 2; column-gap: 16px; line-height: 2.0;">
+                <div>bác_sĩ</div>
+                <div>y_bác_sĩ</div>
+                <div>nữ_hộ_sinh</div>
+                <div>dược_sĩ</div>
+                <div>kỹ_sư</div>
+                <div>công_nhân</div>
+                <div>tài_xế</div>
+                <div>tài_xế_công_nghệ</div>
+                <div>bảo_vệ</div>
+                <div>nhân_viên_giao_hàng</div>
+                <div>nhân_viên_y_tế</div>
+                <div>giáo_viên</div>
+                <div>học_sinh</div>
+                <div>sinh_viên</div>
+                <div>kinh_doanh_tự_do</div>
+                <div>buôn_bán</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card"
+          style="margin-top: 10px; padding: 12px 18px; background: #f8fafc; border-left: 4px solid var(--accent);">
+          <strong style="font-size: 0.88em; color: var(--ink);">Minh họa trực quan:</strong>
+          <div style="font-size: 0.82em; margin-top: 4px; line-height: 1.6;">
+            <div>• <em>Gốc:</em> "Bệnh nhân là <span class="ner-entity"
+                style="background:#FEF3C7; padding: 1px 6px;">tài_xế<span class="ner-tag"
+                  style="background:#D97706; color:white;">JOB</span></span> cư trú tại quận 1..."</div>
+            <div>• <em>Augment:</em> "Bệnh nhân là <span class="ner-entity"
+                style="background:#D1FAE5; padding: 1px 6px;">bác_sĩ<span class="ner-tag"
+                  style="background:#059669; color:white;">JOB</span></span> / <span class="ner-entity"
+                style="background:#DBEAFE; padding: 1px 6px;">nhân_viên_giao_hàng<span class="ner-tag"
+                  style="background:#2563EB; color:white;">JOB</span></span> cư trú tại quận 1..."</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 11: KIẾN TRÚC MÔ HÌNH ═══════════ -->
+      <section>
+        <h2>Kiến Trúc Mô Hình</h2>
+
+        <div class="flow-row" style="margin: 10px 0;">
+          <div class="flow-box">Input Văn Bản</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box blue">Tokenizer<br><small>BPE / SentencePiece</small></div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box green">Transformer Backbone<br><small>PhoBERT / XLM-R (Frozen)</small></div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box purple">LoRA Adapters<br><small>Rank r=16, α=32</small></div>
+        </div>
+
+        <div class="flow-row" style="margin: 10px 0;">
+          <div class="flow-box purple">Dropout (p=0.1)</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box amber">Linear Classifier<br><small>Hidden 768 → 21 Labels</small></div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box green">Linear-Chain CRF<br><small>Viterbi Decoding</small></div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box" style="border-color:var(--accent); background: #D1FAE5;">Chuỗi Nhãn BIO Hợp Lệ</div>
+        </div>
+
+        <div class="card-row" style="margin-top: 14px;">
+          <div class="card" style="padding: 16px 20px;">
+            <h3 style="color:var(--brand); font-size: 1.05em; margin-bottom: 6px;">PhoBERT + LoRA + CRF</h3>
+            <p style="font-size:0.83em; margin: 0; line-height: 1.6;">
+              • Backbone: <code>vinai/phobert-base-v2</code> (135M params)<br>
+              • Target modules: <code>query, key, value, dense</code><br>
+              • Trainable params: <strong>~2.4M</strong> (~1.8% tổng số tham số)
+            </p>
+          </div>
+          <div class="card" style="padding: 16px 20px;">
+            <h3 style="color:var(--accent); font-size: 1.05em; margin-bottom: 6px;">XLM-RoBERTa + LoRA + CRF</h3>
+            <p style="font-size:0.83em; margin: 0; line-height: 1.6;">
+              • Backbone: <code>xlm-roberta-base</code> (278M params)<br>
+              • Target modules: <code>query, value</code><br>
+              • Trainable params: <strong>~1.2M</strong> (~0.4% tổng số tham số)
+            </p>
+          </div>
+        </div>
+
+        <div
+          style="background: var(--surface); border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; margin-top: 10px; font-size: 0.8em; color: var(--muted); text-align: center;">
+          Ưu điểm: LoRA giúp tiết kiệm >96% bộ nhớ huấn luyện, CRF học ma trận chuyển trạng thái triệt tiêu lỗi gán nhãn
+          không hợp lệ.
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 12: PIPELINE HUẤN LUYỆN ═══════════ -->
+      <section>
+        <h2>Pipeline Huấn Luyện — Hyperparameters</h2>
+
+        <table style="font-size:0.75em;">
+          <thead>
+            <tr>
+              <th>Hyperparameter</th>
+              <th>PhoBERT</th>
+              <th>XLM-RoBERTa</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Backbone</td>
+              <td><code>vinai/phobert-base-v2</code></td>
+              <td><code>xlm-roberta-base</code></td>
+            </tr>
+            <tr>
+              <td>LoRA rank (r) / alpha</td>
+              <td>16 / 32</td>
+              <td>16 / 32</td>
+            </tr>
+            <tr>
+              <td>Epochs</td>
+              <td>10</td>
+              <td>10</td>
+            </tr>
+            <tr>
+              <td>Batch Size</td>
+              <td>16</td>
+              <td>16</td>
+            </tr>
+            <tr>
+              <td>Max Sequence Length</td>
+              <td>128</td>
+              <td>128</td>
+            </tr>
+            <tr>
+              <td>LR (LoRA)</td>
+              <td><strong>3e-4</strong></td>
+              <td><strong>1e-4</strong></td>
+            </tr>
+            <tr>
+              <td>LR (Classifier)</td>
+              <td>1e-3</td>
+              <td>5e-4</td>
+            </tr>
+            <tr>
+              <td>LR (CRF)</td>
+              <td>2e-3</td>
+              <td>1e-3</td>
+            </tr>
+            <tr>
+              <td>Warmup Ratio</td>
+              <td>10%</td>
+              <td>10%</td>
+            </tr>
+            <tr>
+              <td>Optimizer</td>
+              <td>AdamW</td>
+              <td>AdamW</td>
+            </tr>
+            <tr>
+              <td>Grad Clipping</td>
+              <td>max_norm = 1.0</td>
+              <td>max_norm = 1.0</td>
+            </tr>
+            <tr>
+              <td>Data Augmentation</td>
+              <td>Entity Swap (JOB, ×3)</td>
+              <td>Entity Swap (JOB, ×3)</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="card" style="margin-top: 8px; padding: 12px 18px;">
+          <p style="font-size: 0.8em; margin: 0; line-height: 1.5;">
+            <strong>Tokenization:</strong> Subword alignment — chỉ gán nhãn subword đầu tiên, còn lại <code>-100</code>
+            (ignore). &nbsp;
+            <strong>Loss:</strong> Neg. log-likelihood CRF (<code>token_mean</code>). &nbsp;
+            <strong>Best checkpoint:</strong> theo Val F1 cao nhất.
+          </p>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 13: LEARNING CURVES ═══════════ -->
+      <section>
+        <h2>Learning Curves — Loss & Validation F1</h2>
+
+        <div class="img-container">
+          <img src="figures/learning_curves.png" alt="Learning Curves" style="max-height: 310px;">
+        </div>
+
+        <div class="card-row" style="margin-top: 12px;">
+          <div class="card" style="padding: 16px 20px;">
+            <h3 style="color:var(--brand); font-size: 1.05em; margin-bottom: 6px;">Loss</h3>
+            <ul style="font-size:0.82em; line-height: 1.6; margin: 0;">
+              <li>Cả hai hội tụ nhanh từ <strong>epoch 2</strong></li>
+              <li>PhoBERT train loss thấp hơn</li>
+            </ul>
+          </div>
+          <div class="card" style="padding: 16px 20px;">
+            <h3 style="color:var(--accent); font-size: 1.05em; margin-bottom: 6px;">Validation F1</h3>
+            <ul style="font-size:0.82em; line-height: 1.6; margin: 0;">
+              <li>PhoBERT: 0.92 → <strong>0.96</strong> (epoch 7–10)</li>
+              <li>XLM-R: 0.80 → <strong>0.92</strong> (epoch 10)</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 14: KẾT QUẢ TỔNG HỢP ═══════════ -->
+      <section>
+        <h2>Kết Quả — So Sánh F1-Score Tổng Hợp</h2>
+
+        <div class="img-container">
+          <img src="figures/overall_metrics_comparison.png" alt="Overall Metrics Comparison" style="max-height: 250px;">
+        </div>
+
+        <div class="metric-row" style="margin: 10px 0;">
+          <div class="metric-box" style="padding: 12px 14px;">
+            <div class="metric-value">~95%</div>
+            <div class="metric-label">PhoBERT F1</div>
+          </div>
+          <div class="metric-box green" style="padding: 12px 14px;">
+            <div class="metric-value">~91%</div>
+            <div class="metric-label">XLM-R F1</div>
+          </div>
+          <div class="metric-box amber" style="padding: 12px 14px;">
+            <div class="metric-value">+4%</div>
+            <div class="metric-label">PhoBERT advantage</div>
+          </div>
+        </div>
+
+        <div class="card" style="padding: 14px 20px; margin-top: 8px;">
+          <p style="font-size: 0.84em; margin: 0; line-height: 1.55;">
+            <strong>Kết luận:</strong> PhoBERT vượt trội XLM-R <strong>~4% F1</strong> trên cả Micro, Macro và Weighted
+            avg.
+            Lý do: pre-training chuyên biệt trên corpus tiếng Việt + tokenizer BPE tối ưu cho đặc thù ngôn ngữ.
+          </p>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 15: F1 THEO THỰC THỂ ═══════════ -->
+      <section>
+        <h2>Kết Quả — F1-Score Theo Từng Thực Thể</h2>
+
+        <div class="img-container">
+          <img src="figures/model_comparison_f1.png" alt="F1 per Entity" style="max-height: 310px;">
+        </div>
+
+        <div class="card-row" style="margin-top: 12px;">
+          <div class="card" style="text-align:center; padding: 16px 14px;">
+            <strong style="color:var(--accent); font-size: 1.05em;">Tốt nhất</strong><br>
+            <span style="font-size:0.84em; display: inline-block; margin-top: 4px;">DATE (~0.99), PATIENT_ID
+              (~0.98)</span>
+          </div>
+          <div class="card" style="text-align:center; padding: 16px 14px;">
+            <strong style="color:var(--warn); font-size: 1.05em;">Thách thức nhất</strong><br>
+            <span style="font-size:0.84em; display: inline-block; margin-top: 4px;">JOB: PhoBERT ~0.79, XLM-R
+              ~0.49</span>
+          </div>
+          <div class="card" style="text-align:center; padding: 16px 14px;">
+            <strong style="color:var(--brand); font-size: 1.05em;">Nhận xét chung</strong><br>
+            <span style="font-size:0.84em; display: inline-block; margin-top: 4px;">PhoBERT tốt hơn ở <u>tất cả</u>
+              entity</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 16: CONFUSION MATRIX ═══════════ -->
+      <section>
+        <h2>Phân Tích Confusion Matrix</h2>
+
+        <div class="two-col" style="margin-top: 6px;">
+          <div class="img-container" style="margin: 0;">
+            <img src="figures/confusion_matrix_phobert.png" alt="CM PhoBERT" style="max-height: 290px;">
+            <p class="img-caption">PhoBERT + LoRA + CRF</p>
+          </div>
+          <div class="img-container" style="margin: 0;">
+            <img src="figures/confusion_matrix_xlm-roberta.png" alt="CM XLM-R" style="max-height: 290px;">
+            <p class="img-caption">XLM-RoBERTa + LoRA + CRF</p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 10px; padding: 14px 20px;">
+          <ul style="font-size: 0.82em; margin: 0; line-height: 1.6;">
+            <li><strong>PhoBERT:</strong> Đường chéo đậm (0.92–0.99). Lỗi chính: I-JOB (0.70), I-NAME (0.77)</li>
+            <li><strong>XLM-R:</strong> I-JOB chỉ 0.31, I-NAME 0.27, I-AGE miss hoàn toàn (→ O)</li>
+            <li><strong>Lỗi chung:</strong> ORGANIZATION ↔ LOCATION nhầm lẫn do ngữ nghĩa gần. Nhãn hiếm dễ bị dự đoán
+              thành O</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 17: KIẾN TRÚC HỆ THỐNG ═══════════ -->
+      <section>
+        <h2>Kiến Trúc Hệ Thống Demo</h2>
+
+        <div class="img-container">
+          <img src="figures/architecture.png" alt="System Architecture" style="max-height: 280px;">
+        </div>
+
+        <div class="card-row" style="margin-top: 14px;">
+          <div class="card" style="text-align:center; padding: 16px 14px;">
+            <strong style="color:var(--brand); font-size: 1.05em;">Frontend</strong><br>
+            <span style="font-size:0.82em; display: inline-block; margin-top: 4px;">React 19 + Vite + TailwindCSS<br>9
+              components, dark/light mode</span>
+          </div>
+          <div class="card" style="text-align:center; padding: 16px 14px;">
+            <strong style="color:var(--accent); font-size: 1.05em;">Backend</strong><br>
+            <span style="font-size:0.82em; display: inline-block; margin-top: 4px;">FastAPI +
+              Pydantic<br><code>/api/predict</code>, <code>/api/health</code></span>
+          </div>
+          <div class="card" style="text-align:center; padding: 16px 14px;">
+            <strong style="color:#7C3AED; font-size: 1.05em;">NER Engine</strong><br>
+            <span style="font-size:0.82em; display: inline-block; margin-top: 4px;">Model Manager (1
+              model/time)<br>Smart Demo Mode fallback</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 18: DEMO ═══════════ -->
+      <section>
+        <h2>Demo Ứng Dụng Web</h2>
+
+        <div class="img-container">
+          <img src="figures/demo-screenshot.png" alt="Demo Screenshot" style="max-height: 310px;">
+        </div>
+
+        <div class="card-row" style="margin-top: 14px; font-size: 0.82em;">
+          <div class="card" style="text-align:center; padding: 14px 10px;">
+            <strong>displaCy Visualizer</strong><br><span style="display:inline-block; margin-top:3px;">Tô sáng thực thể
+              + confidence</span>
+          </div>
+          <div class="card" style="text-align:center; padding: 14px 10px;">
+            <strong>Knowledge Graph</strong><br><span style="display:inline-block; margin-top:3px;">Biểu đồ quan hệ thực
+              thể</span>
+          </div>
+          <div class="card" style="text-align:center; padding: 14px 10px;">
+            <strong>Hồ Sơ Bệnh Án</strong><br><span style="display:inline-block; margin-top:3px;">Tổng hợp + Xuất
+              PDF</span>
+          </div>
+          <div class="card" style="text-align:center; padding: 14px 10px;">
+            <strong>Model Switch</strong><br><span style="display:inline-block; margin-top:3px;">PhoBERT ↔ XLM-R
+              realtime</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 19: KẾT LUẬN ═══════════ -->
+      <section>
+        <h2>Kết Luận</h2>
+
+        <div style="margin-top: 8px;">
+          <h3 style="color: var(--accent); font-size: 1.15em; margin-bottom: 8px;">Đóng góp chính</h3>
+          <div class="check-item">
+            <span class="check-icon">✓</span>
+            <span>Fine-tune PhoBERT + LoRA + CRF đạt <strong>~95% F1</strong> trên PhoNER_COVID19</span>
+          </div>
+          <div class="check-item">
+            <span class="check-icon">✓</span>
+            <span>PhoBERT vượt trội XLM-R <strong>+4% F1</strong> — pre-training chuyên tiếng Việt hiệu quả</span>
+          </div>
+          <div class="check-item">
+            <span class="check-icon">✓</span>
+            <span>Data Augmentation (Entity Swap) cải thiện nhãn hiếm <strong>JOB</strong></span>
+          </div>
+          <div class="check-item">
+            <span class="check-icon">✓</span>
+            <span>Ứng dụng web demo hoàn chỉnh: FastAPI + React, realtime inference</span>
+          </div>
+          <div class="check-item">
+            <span class="check-icon">✓</span>
+            <span>CRF Token Marginals → <strong>confidence score</strong> cấp thực thể</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 18px;">
+          <h3 style="color: var(--warn); font-size: 1.15em; margin-bottom: 8px;">Hạn chế</h3>
+          <div class="check-item">
+            <span class="check-icon warn-icon">!</span>
+            <span>JOB vẫn khó: F1 ~0.79 (PhoBERT), ~0.49 (XLM-R) do thiếu dữ liệu</span>
+          </div>
+          <div class="check-item">
+            <span class="check-icon warn-icon">!</span>
+            <span>Chưa thử nghiệm trên domain khác ngoài COVID-19</span>
+          </div>
+          <div class="check-item">
+            <span class="check-icon warn-icon">!</span>
+            <span>Chưa deploy lên cloud / production</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ SLIDE 20: HƯỚNG PHÁT TRIỂN ═══════════ -->
+      <section>
+        <h2>Hướng Phát Triển</h2>
+
+        <div class="card-row" style="margin-top: 10px;">
+          <div class="card" style="flex: 1; padding: 18px 22px;">
+            <div class="check-item" style="margin: 8px 0;">
+              <span class="check-icon future-icon">1</span>
+              <span><strong>Mở rộng domain:</strong> Bệnh truyền nhiễm khác, y tế tổng quát</span>
+            </div>
+            <div class="check-item" style="margin: 8px 0;">
+              <span class="check-icon future-icon">2</span>
+              <span><strong>Nâng cấp augmentation:</strong> Label-aware, back-translation, GPT paraphrase</span>
+            </div>
+            <div class="check-item" style="margin: 8px 0;">
+              <span class="check-icon future-icon">3</span>
+              <span><strong>Ensemble:</strong> Kết hợp PhoBERT + XLM-R cho kết quả tốt hơn</span>
+            </div>
+          </div>
+          <div class="card" style="flex: 1; padding: 18px 22px;">
+            <div class="check-item" style="margin: 8px 0;">
+              <span class="check-icon future-icon">4</span>
+              <span><strong>Active Learning:</strong> Thu thập thêm mẫu cho JOB, NAME, TRANSPORTATION</span>
+            </div>
+            <div class="check-item" style="margin: 8px 0;">
+              <span class="check-icon future-icon">5</span>
+              <span><strong>Deploy:</strong> Dockerize, AWS/GCP, authentication, API rate limiting</span>
+            </div>
+            <div class="check-item" style="margin: 8px 0;">
+              <span class="check-icon future-icon">6</span>
+              <span><strong>Relation Extraction:</strong> Trích xuất quan hệ giữa các thực thể</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-gradient" style="text-align: center; margin-top: 18px; padding: 16px 20px;">
+          <h3 style="color: white; margin: 0 0 8px 0; font-size: 1.05em;">Tài Liệu Tham Khảo Chính</h3>
+          <div style="font-size: 0.76em; line-height: 1.8; opacity: 0.95;">
+            <div>[1] Truong et al. (2021) <em>"COVID-19 NER for Vietnamese"</em> — NAACL 2021</div>
+            <div>[2] Nguyen & Nguyen (2020) <em>"PhoBERT"</em> — Findings of EMNLP 2020</div>
+            <div>[3] Conneau et al. (2020) <em>"XLM-R"</em> — ACL 2020</div>
+            <div>[4] Hu et al. (2022) <em>"LoRA"</em> — ICLR 2022</div>
+            <div>[5] Lafferty et al. (2001) <em>"CRF"</em> — ICML 2001</div>
+          </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+          <span
+            style="font-size: 1.55em; font-weight: 800; background: var(--gradient-2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+            Cảm ơn thầy/cô và các bạn đã lắng nghe!
+          </span>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script>
+    Reveal.initialize({
+      hash: true,
+      slideNumber: 'c/t',
+      width: 1280,
+      height: 720,
+      margin: 0.02,
+      transition: 'none',
+      transitionSpeed: 'default',
+      center: false,
+      progress: true,
+      controls: true,
+      controlsTutorial: false,
+    });
+  </script>
+</body>
+
+</html>
